@@ -3,8 +3,6 @@ import { z } from "zod";
 import { Resend } from "resend";
 import { createServiceClient } from "@/lib/supabase";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const schema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email().max(200),
@@ -35,6 +33,7 @@ export async function POST(req: NextRequest) {
   const { name, email, company, phone, service, message } = parsed.data;
 
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
     // 1. Persist lead in Supabase
     const supabase = createServiceClient();
     await supabase.from("leads").insert({
