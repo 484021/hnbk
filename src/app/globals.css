@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens ─────────────────────────────────────── */
+@theme {
+  /* Colors */
+  --color-bg-base:        #0A0A0A;
+  --color-bg-card:        #111111;
+  --color-bg-elevated:    #1A1A1A;
+  --color-brand-purple:   #A23BEC;
+  --color-brand-purple-light: #C06FFF;
+  --color-text-primary:   #FFFFFF;
+  --color-text-muted:     #999999;
+  --color-text-subtle:    #555555;
+  --color-border:         rgba(255,255,255,0.08);
+  --color-border-bright:  rgba(255,255,255,0.16);
+
+  /* Typography */
+  --font-sans:  var(--font-geist-sans);
+  --font-mono:  var(--font-geist-mono);
+
+  /* Animations */
+  --animate-fade-up:        fade-up 0.6s ease forwards;
+  --animate-glow-pulse:     glow-pulse 3s ease-in-out infinite;
+  --animate-gradient-shift: gradient-shift 8s ease infinite;
+  --animate-float:          float 6s ease-in-out infinite;
+  --animate-spin-slow:      spin 20s linear infinite;
+}
+
+/* ─── Keyframes ─────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(1.08); }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ─── Base ───────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0A0A0A;
+  color: #FAFBFC;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; }
+::-webkit-scrollbar-track  { background: #08080F; }
+::-webkit-scrollbar-thumb  { background: #333333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555555; }
+
+/* ─── Gradient Text ─────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(180deg, #FFFFFF 0%, #888888 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Solid Card (bento pattern — redesigned homepage sections) ─ */
+/* bg-bg-card border border-white/8 rounded-2xl p-7               */
+/* Featured: bg-bg-elevated border border-brand-purple/30          */
+
+/* ─── Glass Card (inner pages, forms, navbar) ────────────── */
+.glass {
+  background: rgba(17, 17, 17, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-bright {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ─── Gradient Glow Orbs ────────────────────────────────── */
+.orb {
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  animation: var(--animate-glow-pulse);
+}
+
+/* ─── Grid mesh background ──────────────────────────────── */
+.grid-mesh {
+  background-image:
+    linear-gradient(rgba(162, 59, 236, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(162, 59, 236, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ─── Marquee ────────────────────────────────────────────── */
+.marquee-track {
+  animation: marquee 30s linear infinite;
+}
+
+/* ─── Section spacing ────────────────────────────────────── */
+.section-py {
+  padding-top:    clamp(4rem, 8vw, 7rem);
+  padding-bottom: clamp(4rem, 8vw, 7rem);
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .orb { animation: none !important; }
+  .marquee-track { animation: none !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Glow border on hover ───────────────────────────────── */
+.glow-border {
+  position: relative;
+  transition: border-color 0.3s;
+}
+.glow-border::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #A23BEC, #3B82F6);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.glow-border:hover::after {
+  opacity: 0.6;
+}
