@@ -288,7 +288,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
 }`,
     false,  // no search grounding — research is already in the prompt context
     true,   // jsonMode: forces Gemini to return a valid JSON string
-    "gemini-2.0-flash",  // faster model — keeps write step well under 60s
+    "gemini-2.5-flash",
   );
 }
 
@@ -400,7 +400,7 @@ Return this exact JSON shape:
 }`,
     false,  // no search grounding — JSON mode is incompatible with grounding
     true,   // jsonMode: forces valid JSON output
-    "gemini-2.0-flash",  // faster model
+    "gemini-2.5-flash",
   );
 }
 
