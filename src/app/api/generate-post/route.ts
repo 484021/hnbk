@@ -231,7 +231,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
       timeStyle: "short",
     });
     await resend.emails.send({
-      from: "HNBK Blogger <onboarding@resend.dev>",
+      from: "HNBK Blogger <noreply@hnbk.solutions>",
       to: toEmail,
       subject: `New AI post ready: "${postData.title}"`,
       html: `
