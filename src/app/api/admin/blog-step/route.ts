@@ -111,21 +111,52 @@ export async function POST(req: NextRequest) {
     try {
       text = await researchBroad(apiKey, body.topic);
     } catch (err) {
+      if (body.generationId) {
+        try {
+          const supabase = createServiceClient();
+          await supabase
+            .from("blog_generations")
+            .update({ status: "failed", error_details: `Broad research error: ${String(err)}` })
+            .eq("id", body.generationId);
+        } catch { /* non-fatal */ }
+      }
       return NextResponse.json(
         { error: "Broad research failed", details: String(err) },
         { status: 502 },
       );
     }
-    if (body.generationId) {
-      try {
-        const supabase = createServiceClient();
-        await supabase
-          .from("blog_generations")
-          .update({ research_broad: text })
-          .eq("id", body.generationId);
-      } catch { /* non-fatal */ }
-    }
+
+    // Reject near-empty responses (e.g. Gemini returning "I couldn't find...")
     const wordCount = text.split(/\s+/).filter(Boolean).length;
+    if (wordCount < 200) {
+      const detail = `Broad research returned only ${wordCount} words (minimum 200). Gemini search may have failed — please retry.`;
+      if (body.generationId) {
+        try {
+          const supabase = createServiceClient();
+          await supabase
+            .from("blog_generations")
+            .update({ status: "failed", error_details: detail })
+            .eq("id", body.generationId);
+        } catch { /* non-fatal */ }
+      }
+      return NextResponse.json({ error: detail }, { status: 502 });
+    }
+
+    // When tracking a generation, DB persist must succeed before write can load from DB
+    if (body.generationId) {
+      const supabase = createServiceClient();
+      const { error: dbErr } = await supabase
+        .from("blog_generations")
+        .update({ research_broad: text })
+        .eq("id", body.generationId);
+      if (dbErr) {
+        return NextResponse.json(
+          { error: "Failed to store broad research in database", details: dbErr.message },
+          { status: 502 },
+        );
+      }
+    }
+
     return NextResponse.json({ researchBroadText: text, wordCount });
   }
 
@@ -138,21 +169,52 @@ export async function POST(req: NextRequest) {
     try {
       localText = await researchLocal(apiKey, body.topic);
     } catch (err) {
+      if (body.generationId) {
+        try {
+          const supabase = createServiceClient();
+          await supabase
+            .from("blog_generations")
+            .update({ status: "failed", error_details: `Local research error: ${String(err)}` })
+            .eq("id", body.generationId);
+        } catch { /* non-fatal */ }
+      }
       return NextResponse.json(
         { error: "Local research failed", details: String(err) },
         { status: 502 },
       );
     }
-    if (body.generationId) {
-      try {
-        const supabase = createServiceClient();
-        await supabase
-          .from("blog_generations")
-          .update({ research_local: localText })
-          .eq("id", body.generationId);
-      } catch { /* non-fatal */ }
-    }
+
+    // GTA data is narrower by design — 100 word minimum
     const localWordCount = localText.split(/\s+/).filter(Boolean).length;
+    if (localWordCount < 100) {
+      const detail = `GTA research returned only ${localWordCount} words (minimum 100). Gemini search may have failed — please retry.`;
+      if (body.generationId) {
+        try {
+          const supabase = createServiceClient();
+          await supabase
+            .from("blog_generations")
+            .update({ status: "failed", error_details: detail })
+            .eq("id", body.generationId);
+        } catch { /* non-fatal */ }
+      }
+      return NextResponse.json({ error: detail }, { status: 502 });
+    }
+
+    // When tracking a generation, DB persist must succeed before write can load from DB
+    if (body.generationId) {
+      const supabase = createServiceClient();
+      const { error: dbErr } = await supabase
+        .from("blog_generations")
+        .update({ research_local: localText })
+        .eq("id", body.generationId);
+      if (dbErr) {
+        return NextResponse.json(
+          { error: "Failed to store local research in database", details: dbErr.message },
+          { status: 502 },
+        );
+      }
+    }
+
     return NextResponse.json({ researchLocalText: localText, wordCount: localWordCount });
   }
 
@@ -162,8 +224,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing topic" }, { status: 400 });
     }
 
-    // Fetch existing published posts for internal linking
     const supabaseWrite = createServiceClient();
+    let researchBroadText = body.researchBroadText ?? "";
+    let researchLocalText = body.researchLocalText ?? "";
+
+    // Phase 4: when generationId is present, load research from DB rather than
+    // trusting the request body. Validates both fields are stored before writing.
+    if (body.generationId) {
+      const { data: gen, error: genErr } = await supabaseWrite
+        .from("blog_generations")
+        .select("research_broad, research_local")
+        .eq("id", body.generationId)
+        .single();
+      if (genErr || !gen) {
+        return NextResponse.json({ error: "Generation record not found" }, { status: 404 });
+      }
+      if (!gen.research_broad || gen.research_broad.split(/\s+/).filter(Boolean).length < 200) {
+        return NextResponse.json(
+          { error: "Broad research not stored or insufficient — both research steps must complete successfully before writing" },
+          { status: 422 },
+        );
+      }
+      if (!gen.research_local || gen.research_local.split(/\s+/).filter(Boolean).length < 100) {
+        return NextResponse.json(
+          { error: "GTA research not stored or insufficient — both research steps must complete successfully before writing" },
+          { status: 422 },
+        );
+      }
+      researchBroadText = gen.research_broad;
+      researchLocalText = gen.research_local;
+    }
     let existingPosts: { slug: string; title: string }[] = [];
     try {
       const { data: postRows } = await supabaseWrite
@@ -182,8 +272,8 @@ export async function POST(req: NextRequest) {
       rawText = await writeArticle(
         apiKey,
         body.topic,
-        body.researchBroadText ?? "",
-        body.researchLocalText ?? "",
+        researchBroadText,
+        researchLocalText,
         existingPosts,
       );
     } catch (err) {
@@ -212,8 +302,8 @@ export async function POST(req: NextRequest) {
         retryRaw = await retryWriteAsJson(
           apiKey,
           body.topic,
-          body.researchBroadText ?? "",
-          body.researchLocalText ?? "",
+          researchBroadText,
+          researchLocalText,
           existingPosts,
         );
       } catch (retryErr) {

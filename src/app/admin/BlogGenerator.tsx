@@ -161,13 +161,19 @@ export default function BlogGenerator({
       }>("research_local", { topic, generationId: genId ?? undefined });
       markDone("research_local", `${localWords.toLocaleString()} words of local data gathered`);
 
-      // 4. Write
+      // 4. Write — when generationId is set, the server loads research from DB
+      // (avoids re-sending large text + guarantees writer uses stored verified data)
       markRunning("write");
       const { postData, wordCount, rawText } = await callStep<{
         postData: { title: string };
         wordCount: number;
         rawText: string;
-      }>("write", { topic, researchBroadText, researchLocalText, generationId: genId ?? undefined });
+      }>("write", {
+        topic,
+        generationId: genId ?? undefined,
+        // Only pass research text as fallback when we have no generationId (e.g. cron-style invocation)
+        ...(genId ? {} : { researchBroadText, researchLocalText }),
+      });
       markDone("write", `${wordCount.toLocaleString()} words - "${postData.title}"`);
 
       // 5. Validate (done inside write step)

@@ -289,10 +289,10 @@ CRITICAL: Do NOT output any section label or heading for section 1. The article 
 7. SOURCES (required — place AFTER the closing CTA, at the very end of content)
    - Add: <hr><h2>Sources</h2><ol> ... </ol>
    - List EVERY source cited with a superscript in the article, in order
-   - Format each item as: <li id="source-N">[N] <a href="URL" target="_blank" rel="noopener noreferrer">Source name</a>. "Statistic or finding." Month Year.</li>
-   - Example: <li id="source-1">[1] <a href="https://www.cfib-fcei.ca/example" target="_blank" rel="noopener noreferrer">CFIB</a>. "67% of Canadian SMBs cite labour as #1 cost." March 2026.</li>
-   - If no URL is available for a source, omit the anchor tag and just use the source name as plain text
-   - Use only sources actually found in the research briefs above — do not invent sources or URLs
+   - For sources WITH a URL in the VERIFIED SOURCE URLS block: <li id="source-N">[N] <a href="EXACT_URL_FROM_RESEARCH" target="_blank" rel="noopener noreferrer">Source name</a>. "Statistic or finding." Month Year.</li>
+   - For sources WITHOUT a URL in the VERIFIED SOURCE URLS block: <li id="source-N">[N] Source name. "Statistic or finding." Month Year.</li> — NO anchor tag, NO invented URL
+   - NEVER fabricate a URL. Copy URLs character-for-character from the VERIFIED SOURCE URLS block only.
+   - Only cite sources whose data actually appears in the research briefs — do not invent new sources
 
 MANDATORY QUALITY REQUIREMENTS:
 - Total length: 1,400–1,800 words (not counting the Sources list)
@@ -300,7 +300,9 @@ MANDATORY QUALITY REQUIREMENTS:
 - All financial figures in CAD
 - Use <blockquote> for any direct quotes from named sources
 - HTML tags allowed: <h2> <h3> <p> <ul> <ol> <li> <strong> <blockquote> <sup> <a> <hr> only — no <div> no <span>
-- <a> tags: only use for internal HNBK blog links listed above — never link to external sites
+- <a> tags IN ARTICLE BODY: ONLY for internal HNBK blog links from the list provided above — no other links anywhere in the body text
+- <a> tags IN SOURCES <ol> ONLY: use the exact URL from the "VERIFIED SOURCE URLS" block in the research briefs above — these are the only external URLs permitted
+- CRITICAL URL RULE: Do NOT invent, guess, or construct any URL. If a source cited in the article has no matching URL in the VERIFIED SOURCE URLS block, format it as plain text with NO anchor tag. An article containing any fabricated URL will be rejected and regenerated.
 - Tags array: MUST include at least 1 geo tag (choose from: GTA, Toronto, Ontario, Mississauga, Brampton) AND at least 1 industry or topic tag
 - title: 50–65 characters, includes a long-tail keyword
 - meta_description: 150–160 characters, includes a benefit and a keyword
@@ -426,7 +428,7 @@ Return this exact JSON shape:
   "excerpt": "2-sentence Google snippet",
   "meta_description": "150-160 char SEO meta",
   "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
-  "content": "full HTML. Use <sup><a href=\"#source-N\">[N]</a></sup> for every cited stat. End with <hr><h2>Sources</h2><ol><li id=\"source-N\">[N] <a href=\\\"URL\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Source name</a>. Finding. Date.</li>...</ol>. Allowed tags: h2 h3 p ul ol li strong blockquote sup a hr. Open directly with <p>, NO Hook heading."
+  "content": "full HTML. Use <sup><a href=\"#source-N\">[N]</a></sup> for every cited stat. End with <hr><h2>Sources</h2><ol><li id=\"source-N\">[N] Source name or <a href=\"EXACT_URL_FROM_VERIFIED_SOURCE_URLS_BLOCK_ONLY\" target=\"_blank\" rel=\"noopener noreferrer\">Source name</a>. Finding. Date.</li>...</ol>. CRITICAL: only use URLs that appear verbatim in the VERIFIED SOURCE URLS block in the research context above — never invent or guess a URL. If no verified URL exists for a source, omit the anchor entirely. Allowed tags: h2 h3 p ul ol li strong blockquote sup a hr. Open directly with <p>, NO Hook heading. <a> in article body = internal HNBK links only."
 }`,
     false,  // no search grounding — JSON mode is incompatible with grounding
     true,   // jsonMode: forces valid JSON output
