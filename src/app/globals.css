@@ -252,6 +252,15 @@ body {
   color: #A23BEC;
   font-weight: 600;
 }
+.blog-prose sup a {
+  color: #A23BEC;
+  text-decoration: none;
+  font-weight: 600;
+}
+.blog-prose sup a:hover {
+  color: #C06FFF;
+  text-decoration: none;
+}
 
 /* Sources section — muted, compact */
 .blog-prose h2:last-of-type,

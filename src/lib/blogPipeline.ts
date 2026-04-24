@@ -216,16 +216,16 @@ CRITICAL: Do NOT output any section label or heading for section 1. The article 
    - Quantify the problem in CAD and hours per week — use stats from the research brief
    - Use a specific example: "A typical Toronto [industry] business with 10 staff spends roughly $X/month on [task]"
    - Reference relevant Ontario context (WSIB rates, Ontario minimum wage $17.20/hr, HST, OHSA, construction season)
-   - Cite at least 2 statistics — use footnote-style superscripts: <sup>[1]</sup>, <sup>[2]</sup>, etc.
+   - Cite at least 2 statistics — use anchored footnote superscripts: <sup><a href="#source-1">[1]</a></sup>, <sup><a href="#source-2">[2]</a></sup>, etc.
 
 3. HOW TO FIX IT: 3–5 STEPS (~600 words, one H2 per step)
    - Each step is concrete and actionable — what to do, what tool or approach to use, what result to expect
    - Use real tool categories or approach names (not just "use AI") — e.g. "automated follow-up sequences", "job costing software", "AI dispatch routing"
    - Include at least 1 CAD cost estimate or hours-saved figure per step
-   - Cite statistics with footnote superscripts where used — e.g. <sup>[3]</sup>
+   - Cite statistics with anchored footnote superscripts where used — e.g. <sup><a href="#source-3">[3]</a></sup>
 
 4. WHAT THE NUMBERS SAY (~200 words, H2 heading: "What the Numbers Say")
-   - Cite 3–5 specific statistics from the research brief, each marked with a footnote superscript <sup>[N]</sup>
+   - Cite 3–5 specific statistics from the research brief, each marked with an anchored footnote superscript <sup><a href="#source-N">[N]</a></sup>
    - Show the scale of the problem or the scale of the opportunity
    - Connect the statistics to the GTA/Ontario context
 
@@ -245,8 +245,8 @@ CRITICAL: Do NOT output any section label or heading for section 1. The article 
 7. SOURCES (required — place AFTER the closing CTA, at the very end of content)
    - Add: <hr><h2>Sources</h2><ol> ... </ol>
    - List EVERY source cited with a superscript in the article, in order
-   - Format each item: <li>[N] Source name. "Statistic or finding." Month Year.</li>
-   - Example: <li>[1] CFIB. "67% of Canadian SMBs cite labour as #1 cost." March 2026.</li>
+   - Format each item with an id attribute: <li id="source-N">[N] Source name. "Statistic or finding." Month Year.</li>
+   - Example: <li id="source-1">[1] CFIB. "67% of Canadian SMBs cite labour as #1 cost." March 2026.</li>
    - Use only sources actually found in the research briefs above — do not invent sources
 
 MANDATORY QUALITY REQUIREMENTS:
@@ -376,7 +376,7 @@ Return this exact JSON shape:
   "excerpt": "2-sentence Google snippet",
   "meta_description": "150-160 char SEO meta",
   "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
-  "content": "full HTML. Use <sup>[N]</sup> for every cited stat. End with <hr><h2>Sources</h2><ol><li>[N] Source. Finding. Date.</li>...</ol>. Allowed tags: h2 h3 p ul ol li strong blockquote sup a hr. Open directly with <p>, NO Hook heading."
+  "content": "full HTML. Use <sup><a href=\"#source-N\">[N]</a></sup> for every cited stat. End with <hr><h2>Sources</h2><ol><li id=\"source-N\">[N] Source. Finding. Date.</li>...</ol>. Allowed tags: h2 h3 p ul ol li strong blockquote sup a hr. Open directly with <p>, NO Hook heading."
 }`,
     false,  // no search grounding — JSON mode is incompatible with grounding
     true,   // jsonMode: forces valid JSON output

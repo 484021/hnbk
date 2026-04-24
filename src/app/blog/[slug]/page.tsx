@@ -186,9 +186,10 @@ export default async function BlogPostPage({ params }: Props) {
         </div>
       </SectionWrapper>
 
-      {/* Body + Sidebar */}
-      <SectionWrapper className="bg-bg-base pb-24">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-12 items-start">
+      {/* Body + Sidebar — plain section so sticky works (SectionWrapper has overflow-x:hidden which breaks sticky) */}
+      <section className="relative w-full bg-bg-base section-py pb-24">
+        <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-12 items-start">
 
           {/* Main content */}
           <div>
@@ -241,7 +242,8 @@ export default async function BlogPostPage({ params }: Props) {
             </aside>
           )}
         </div>
-      </SectionWrapper>
+        </div>
+      </section>
     </>
   );
 }
