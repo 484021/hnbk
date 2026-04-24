@@ -21,7 +21,7 @@ export async function geminiGenerate(
   }
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -154,6 +154,10 @@ Return as plain text with clear section headers. Be specific — include numbers
 // ─── Article writer ──────────────────────────────────────────────────────────
 export type ExistingPost = { slug: string; title: string };
 
+// Max research words passed to the write step.
+// Keeps total prompt tokens low so Gemini completes well under 60s.
+const RESEARCH_MAX_WORDS = 600;
+
 export async function writeArticle(
   apiKey: string,
   topic: string,
@@ -161,6 +165,10 @@ export async function writeArticle(
   researchLocalText: string,
   existingPosts: ExistingPost[] = [],
 ): Promise<string> {
+  // Truncate research to stay within Vercel's 60s function limit
+  const broadTruncated = truncateWords(researchBroadText, RESEARCH_MAX_WORDS);
+  const localTruncated = truncateWords(researchLocalText, RESEARCH_MAX_WORDS);
+
   const internalLinksBlock =
     existingPosts.length > 0
       ? `
@@ -181,12 +189,12 @@ You have been provided with research findings below. You MUST use these findings
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RESEARCH BRIEF — BROAD TRENDS & STATS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${researchBroadText || "No pre-research available — use Google Search grounding to find current data."}
+${broadTruncated || "No pre-research available — use your own knowledge of current industry trends."}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RESEARCH BRIEF — GTA/ONTARIO SPECIFIC
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${researchLocalText || "No pre-research available — use Google Search grounding to find Ontario-specific data."}
+${localTruncated || "No pre-research available — use your own knowledge of Ontario/GTA context."}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ABOUT HNBK:
@@ -273,6 +281,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
 }`,
     false,  // no search grounding — research is already in the prompt context
     true,   // jsonMode: forces Gemini to return a valid JSON string
+    "gemini-2.0-flash",  // faster model — keeps write step well under 60s
   );
 }
 
@@ -357,6 +366,10 @@ export async function retryWriteAsJson(
       ? `\nExisting HNBK posts you may link to (only when topically natural, 2-3 max):\n${existingPosts.map((p) => `- /blog/${p.slug} — "${p.title}"`).join("\n")}\n`
       : "";
 
+  // Truncate research for retry prompt too
+  const broadTruncated = truncateWords(researchBroadText, RESEARCH_MAX_WORDS);
+  const localTruncated = truncateWords(researchLocalText, RESEARCH_MAX_WORDS);
+
   return geminiGenerate(
     apiKey,
     `IMPORTANT: Your previous response could not be parsed as JSON. You MUST return ONLY a valid JSON object — no explanatory text, no markdown fences, no preamble, no postamble. Start your response with { and end with }. Nothing else.
@@ -364,10 +377,10 @@ export async function retryWriteAsJson(
 Now write the blog article for topic: "${topic}"
 
 Research context (broad):
-${researchBroadText || "Not available — use your own knowledge."}
+${broadTruncated || "Not available — use your own knowledge."}
 
 Research context (GTA/Ontario):
-${researchLocalText || "Not available — use your own knowledge."}
+${localTruncated || "Not available — use your own knowledge."}
 ${internalLinksBlock}
 Return this exact JSON shape:
 {
@@ -380,6 +393,7 @@ Return this exact JSON shape:
 }`,
     false,  // no search grounding — JSON mode is incompatible with grounding
     true,   // jsonMode: forces valid JSON output
+    "gemini-2.0-flash",  // faster model
   );
 }
 
