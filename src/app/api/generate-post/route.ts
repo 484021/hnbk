@@ -63,18 +63,22 @@ export async function POST(req: NextRequest) {
     // empty body is fine
   }
 
-  // 3. Fetch recent post titles for topic deduplication (non-fatal)
+  // 3. Fetch recent posts for topic deduplication + internal linking (non-fatal)
   const supabase = createServiceClient();
   let recentTitles: string[] = [];
+  let existingPosts: { slug: string; title: string }[] = [];
   try {
     const { data: recentPosts } = await supabase
       .from("blog_posts")
-      .select("title")
-      .order("created_at", { ascending: false })
+      .select("slug, title")
+      .eq("published", true)
+      .order("published_at", { ascending: false })
       .limit(30);
-    recentTitles = (recentPosts ?? []).map((p: { title: string }) => p.title);
+    const rows = recentPosts ?? [];
+    recentTitles = rows.map((p: { title: string }) => p.title);
+    existingPosts = rows.map((p: { slug: string; title: string }) => ({ slug: p.slug, title: p.title }));
   } catch {
-    // proceed without deduplication
+    // proceed without deduplication or internal links
   }
 
   // 4. Topic selection
@@ -107,7 +111,7 @@ export async function POST(req: NextRequest) {
   // 6. Write article
   let rawText: string;
   try {
-    rawText = await writeArticle(apiKey, topic, researchBroadText, researchLocalText);
+    rawText = await writeArticle(apiKey, topic, researchBroadText, researchLocalText, existingPosts);
   } catch (err) {
     return NextResponse.json(
       { error: "Article generation failed", details: String(err) },
@@ -121,7 +125,7 @@ export async function POST(req: NextRequest) {
     postData = parsePostData(rawText);
   } catch {
     try {
-      const retryRaw = await retryWriteAsJson(apiKey, topic, researchBroadText, researchLocalText);
+      const retryRaw = await retryWriteAsJson(apiKey, topic, researchBroadText, researchLocalText, existingPosts);
       postData = parsePostData(retryRaw);
     } catch {
       return NextResponse.json(

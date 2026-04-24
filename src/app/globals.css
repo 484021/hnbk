@@ -241,3 +241,26 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   margin: 2.5rem 0;
 }
+
+/* Footnote superscripts */
+.blog-prose sup {
+  font-size: 0.65em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+  top: -0.5em;
+  color: #A23BEC;
+  font-weight: 600;
+}
+
+/* Sources section — muted, compact */
+.blog-prose h2:last-of-type,
+.blog-prose ol:last-of-type {
+  /* handled below per-element */
+}
+.blog-prose ol li {
+  font-size: 0.875rem;
+  color: #888899;
+  line-height: 1.6;
+  margin-bottom: 0.4rem;
+}

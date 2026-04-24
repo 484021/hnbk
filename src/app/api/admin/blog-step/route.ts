@@ -104,11 +104,28 @@ export async function POST(req: NextRequest) {
     if (!body.topic) {
       return NextResponse.json({ error: "Missing topic" }, { status: 400 });
     }
+
+    // Fetch existing published posts for internal linking
+    const supabaseWrite = createServiceClient();
+    let existingPosts: { slug: string; title: string }[] = [];
+    try {
+      const { data: postRows } = await supabaseWrite
+        .from("blog_posts")
+        .select("slug, title")
+        .eq("published", true)
+        .order("published_at", { ascending: false })
+        .limit(20);
+      existingPosts = postRows ?? [];
+    } catch {
+      // proceed without internal links
+    }
+
     const rawText = await writeArticle(
       apiKey,
       body.topic,
       body.researchBroadText ?? "",
       body.researchLocalText ?? "",
+      existingPosts,
     );
 
     let postData;
@@ -124,6 +141,7 @@ export async function POST(req: NextRequest) {
           body.topic,
           body.researchBroadText ?? "",
           body.researchLocalText ?? "",
+          existingPosts,
         );
       } catch (retryErr) {
         return NextResponse.json(

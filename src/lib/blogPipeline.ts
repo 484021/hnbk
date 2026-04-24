@@ -152,12 +152,24 @@ Return as plain text with clear section headers. Be specific — include numbers
 }
 
 // ─── Article writer ──────────────────────────────────────────────────────────
+export type ExistingPost = { slug: string; title: string };
+
 export async function writeArticle(
   apiKey: string,
   topic: string,
   researchBroadText: string,
   researchLocalText: string,
+  existingPosts: ExistingPost[] = [],
 ): Promise<string> {
+  const internalLinksBlock =
+    existingPosts.length > 0
+      ? `
+INTERNAL LINKING (important for SEO):
+You have access to these existing HNBK blog posts. Where a post is TOPICALLY RELEVANT to what you are writing, naturally hyperlink 2–3 of them using <a href="/blog/[slug]">anchor text</a>. Use descriptive anchor text, not "click here". Only link where it reads naturally — never force a link.
+${existingPosts.map((p) => `- /blog/${p.slug} — "${p.title}"`).join("\n")}
+`
+      : "";
+
   return geminiGenerate(
     apiKey,
     `You are a senior content writer and industry expert for HNBK (hnbk.solutions), a Toronto-based AI and automation company serving Greater Toronto Area SMBs.
@@ -188,7 +200,7 @@ TARGET READER PERSONA:
 - Industries: construction/trades, restaurants, professional services (accounting, law, real estate), clinics, retail, trucking, manufacturing, property management
 - Skeptical of "AI will fix everything" promises — needs specific CAD dollar amounts and hours saved to believe it
 - Does not have an IT team; needs solutions that are practical without technical expertise
-
+${internalLinksBlock}
 REQUIRED ARTICLE STRUCTURE (follow this order exactly — do not skip any section):
 
 CRITICAL: Do NOT output any section label or heading for section 1. The article must open directly with a <p> tag — no "Hook", "HOOK", "1.", or any other label before the first paragraph. The hook is invisible structure for you, not text for the reader.
@@ -204,16 +216,16 @@ CRITICAL: Do NOT output any section label or heading for section 1. The article 
    - Quantify the problem in CAD and hours per week — use stats from the research brief
    - Use a specific example: "A typical Toronto [industry] business with 10 staff spends roughly $X/month on [task]"
    - Reference relevant Ontario context (WSIB rates, Ontario minimum wage $17.20/hr, HST, OHSA, construction season)
-   - Cite at least 2 statistics with source names
+   - Cite at least 2 statistics — use footnote-style superscripts: <sup>[1]</sup>, <sup>[2]</sup>, etc.
 
 3. HOW TO FIX IT: 3–5 STEPS (~600 words, one H2 per step)
    - Each step is concrete and actionable — what to do, what tool or approach to use, what result to expect
    - Use real tool categories or approach names (not just "use AI") — e.g. "automated follow-up sequences", "job costing software", "AI dispatch routing"
    - Include at least 1 CAD cost estimate or hours-saved figure per step
-   - Integrate research statistics to support each recommendation
+   - Cite statistics with footnote superscripts where used — e.g. <sup>[3]</sup>
 
 4. WHAT THE NUMBERS SAY (~200 words, H2 heading: "What the Numbers Say")
-   - Cite 3–5 specific statistics from the research brief, each with source name and year
+   - Cite 3–5 specific statistics from the research brief, each marked with a footnote superscript <sup>[N]</sup>
    - Show the scale of the problem or the scale of the opportunity
    - Connect the statistics to the GTA/Ontario context
 
@@ -230,12 +242,20 @@ CRITICAL: Do NOT output any section label or heading for section 1. The article 
    - Must mention HNBK by name and include hnbk.solutions
    - Example: "If you want to see exactly how this would work for your [industry] business, HNBK helps GTA owners build these systems — visit hnbk.solutions to book a free 30-minute walkthrough."
 
+7. SOURCES (required — place AFTER the closing CTA, at the very end of content)
+   - Add: <hr><h2>Sources</h2><ol> ... </ol>
+   - List EVERY source cited with a superscript in the article, in order
+   - Format each item: <li>[N] Source name. "Statistic or finding." Month Year.</li>
+   - Example: <li>[1] CFIB. "67% of Canadian SMBs cite labour as #1 cost." March 2026.</li>
+   - Use only sources actually found in the research briefs above — do not invent sources
+
 MANDATORY QUALITY REQUIREMENTS:
-- Total length: 1,400–1,800 words
-- Must cite AT LEAST 3 specific statistics with source name and year (use research brief above)
+- Total length: 1,400–1,800 words (not counting the Sources list)
+- MUST use footnote superscripts <sup>[N]</sup> for every cited statistic — minimum 4 citations
 - All financial figures in CAD
 - Use <blockquote> for any direct quotes from named sources
-- HTML tags: <h2> <h3> <p> <ul> <li> <strong> <blockquote> <hr> only — no <div> no <span> no <a>
+- HTML tags allowed: <h2> <h3> <p> <ul> <ol> <li> <strong> <blockquote> <sup> <a> <hr> only — no <div> no <span>
+- <a> tags: only use for internal HNBK blog links listed above — never link to external sites
 - Tags array: MUST include at least 1 geo tag (choose from: GTA, Toronto, Ontario, Mississauga, Brampton) AND at least 1 industry or topic tag
 - title: 50–65 characters, includes a long-tail keyword
 - meta_description: 150–160 characters, includes a benefit and a keyword
@@ -249,7 +269,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
   "excerpt": "2-sentence summary, 150–160 characters total, reads like a Google snippet",
   "meta_description": "SEO meta, 150–160 characters, includes benefit + keyword",
   "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
-  "content": "full HTML using only allowed tags"
+  "content": "full HTML using only allowed tags, ends with Sources section"
 }`,
     false,  // no search grounding — research is already in the prompt context
     true,   // jsonMode: forces Gemini to return a valid JSON string
@@ -330,7 +350,13 @@ export async function retryWriteAsJson(
   topic: string,
   researchBroadText: string,
   researchLocalText: string,
+  existingPosts: ExistingPost[] = [],
 ): Promise<string> {
+  const internalLinksBlock =
+    existingPosts.length > 0
+      ? `\nExisting HNBK posts you may link to (only when topically natural, 2-3 max):\n${existingPosts.map((p) => `- /blog/${p.slug} — "${p.title}"`).join("\n")}\n`
+      : "";
+
   return geminiGenerate(
     apiKey,
     `IMPORTANT: Your previous response could not be parsed as JSON. You MUST return ONLY a valid JSON object — no explanatory text, no markdown fences, no preamble, no postamble. Start your response with { and end with }. Nothing else.
@@ -342,7 +368,7 @@ ${researchBroadText || "Not available — use your own knowledge."}
 
 Research context (GTA/Ontario):
 ${researchLocalText || "Not available — use your own knowledge."}
-
+${internalLinksBlock}
 Return this exact JSON shape:
 {
   "title": "50-65 char SEO title with long-tail keyword",
@@ -350,7 +376,7 @@ Return this exact JSON shape:
   "excerpt": "2-sentence Google snippet",
   "meta_description": "150-160 char SEO meta",
   "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
-  "content": "full HTML using only h2 h3 p ul li strong blockquote hr tags, 1400-1800 words, NO Hook heading, open directly with <p>"
+  "content": "full HTML. Use <sup>[N]</sup> for every cited stat. End with <hr><h2>Sources</h2><ol><li>[N] Source. Finding. Date.</li>...</ol>. Allowed tags: h2 h3 p ul ol li strong blockquote sup a hr. Open directly with <p>, NO Hook heading."
 }`,
     false,  // no search grounding — JSON mode is incompatible with grounding
     true,   // jsonMode: forces valid JSON output
