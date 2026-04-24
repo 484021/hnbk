@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "Services",
   description:
     "AI Agent Orchestration, Custom Software Development, AI Integration, and AI Strategy & Consulting — tailored for SMBs.",
-  alternates: { canonical: "https://hnbk.ca/services" },
+  alternates: { canonical: "https://hnbk.solutions/services" },
 };
 
 const services = [

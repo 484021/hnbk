@@ -11,12 +11,12 @@ export const metadata: Metadata = {
   title: "Blog",
   description:
     "Practical insights on AI orchestration, business automation, and custom software for Canadian SMBs — from the HNBK team.",
-  alternates: { canonical: "https://hnbk.ca/blog" },
+  alternates: { canonical: "https://hnbk.solutions/blog" },
   openGraph: {
     title: "The HNBK Blog — AI & Automation Insights",
     description:
       "Practical insights on AI orchestration, business automation, and custom software for Canadian SMBs.",
-    url: "https://hnbk.ca/blog",
+    url: "https://hnbk.solutions/blog",
   },
 };
 

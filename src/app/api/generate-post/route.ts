@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       topic = (
         await geminiGenerate(
           apiKey,
-          `You are a content strategist for HNBK (hnbk.ca), a Toronto-based company offering AI agent orchestration, business automation, and custom software to Canadian SMBs.
+          `You are a content strategist for HNBK (hnbk.solutions), a Toronto-based company offering AI agent orchestration, business automation, and custom software to Canadian SMBs.
 
 Pick ONE specific, high-value blog article topic for ${month}. Requirements:
 - Appeals to Canadian small/mid-sized business owners (5–200 employees)
@@ -116,7 +116,7 @@ Respond with ONLY the topic title. No explanation, no punctuation at the end.`,
   try {
     rawText = await geminiGenerate(
       apiKey,
-      `You are a content writer for HNBK (hnbk.ca), a Toronto-based AI and automation company serving Canadian SMBs.
+      `You are a content writer for HNBK (hnbk.solutions), a Toronto-based AI and automation company serving Canadian SMBs.
 
 Write a comprehensive, SEO-optimized blog article on: "${topic}"
 
@@ -130,7 +130,7 @@ Requirements:
 - Include current stats or trends (use Google Search grounding)
 - H2 headings to structure the piece
 - Canadian context where relevant (CAD costs, Canadian industries)
-- End with a 2-sentence soft CTA mentioning HNBK at hnbk.ca
+- End with a 2-sentence soft CTA mentioning HNBK at hnbk.solutions
 
 CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before or after. Just valid JSON.
 
@@ -224,14 +224,14 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
   // 7. Email notification — non-fatal
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const toEmail = process.env.CONTACT_TO_EMAIL ?? "hello@hnbk.ca";
+    const toEmail = process.env.CONTACT_TO_EMAIL ?? "hello@hnbk.solutions";
     const publishLocal = new Date(publishAt).toLocaleString("en-CA", {
       timeZone: "America/Toronto",
       dateStyle: "medium",
       timeStyle: "short",
     });
     await resend.emails.send({
-      from: "HNBK Blogger <noreply@hnbk.ca>",
+      from: "HNBK Blogger <noreply@hnbk.solutions>",
       to: toEmail,
       subject: `New AI post ready: "${postData.title}"`,
       html: `
@@ -246,7 +246,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
           <hr style="border:none;border-top:1px solid #eee;margin:16px 0;" />
           <p style="color:#555;font-size:14px;">
             <strong>To cancel:</strong> delete row with slug <code>${postData.slug}</code> from Supabase → blog_posts before ${publishLocal}.<br />
-            <strong>Preview after publish:</strong> <a href="https://hnbk.ca/blog/${postData.slug}">hnbk.ca/blog/${postData.slug}</a>
+            <strong>Preview after publish:</strong> <a href="https://hnbk.solutions/blog/${postData.slug}">hnbk.solutions/blog/${postData.slug}</a>
           </p>
         </div>
       `,

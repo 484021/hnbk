@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "Pricing",
   description:
     "Transparent, predictable pricing for AI Orchestration and Custom Software. Starter from $2,500/mo.",
-  alternates: { canonical: "https://hnbk.ca/pricing" },
+  alternates: { canonical: "https://hnbk.solutions/pricing" },
 };
 
 const tiers = [

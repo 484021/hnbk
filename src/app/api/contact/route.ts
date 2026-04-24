@@ -45,11 +45,11 @@ export async function POST(req: NextRequest) {
       service_interest: service ?? null,
     });
 
-    const toEmail = process.env.CONTACT_TO_EMAIL ?? "hello@hnbk.ca";
+    const toEmail = process.env.CONTACT_TO_EMAIL ?? "hello@hnbk.solutions";
 
     // 2. Notify Santhosh
     await resend.emails.send({
-      from: "HNBK Contact <noreply@hnbk.ca>",
+      from: "HNBK Contact <noreply@hnbk.solutions>",
       to: toEmail,
       replyTo: email,
       subject: `New enquiry from ${name}${company ? ` (${company})` : ""}`,
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Confirmation to user
     await resend.emails.send({
-      from: "Santhosh at HNBK <hello@hnbk.ca>",
+      from: "Santhosh at HNBK <hello@hnbk.solutions>",
       to: email,
       subject: "Got your message — talk soon",
       html: `

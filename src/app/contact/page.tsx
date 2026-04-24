@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "Contact",
   description:
     "Book a free strategy call with HNBK. We'll audit your operations and show you exactly what AI can do.",
-  alternates: { canonical: "https://hnbk.ca/contact" },
+  alternates: { canonical: "https://hnbk.solutions/contact" },
 };
 
 export default function ContactPage() {
@@ -55,13 +55,13 @@ export default function ContactPage() {
                 <span className="text-sm">(647) 880-9350</span>
               </a>
               <a
-                href="mailto:hello@hnbk.ca"
+                href="mailto:hello@hnbk.solutions"
                 className="flex items-center gap-3 text-text-muted hover:text-text-primary transition-colors group"
               >
                 <div className="w-10 h-10 rounded-xl glass border border-white/8 flex items-center justify-center group-hover:border-brand-purple/30 transition-colors">
                   <Mail size={16} />
                 </div>
-                <span className="text-sm">hello@hnbk.ca</span>
+                <span className="text-sm">hello@hnbk.solutions</span>
               </a>
               <a
                 href="https://www.instagram.com/hnbk.solutions/"

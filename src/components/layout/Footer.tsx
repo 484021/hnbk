@@ -50,12 +50,12 @@ export default function Footer() {
             </p>
             <div className="flex items-center gap-4 mt-2">
               <a
-                href="mailto:hello@hnbk.ca"
+                href="mailto:hello@hnbk.solutions"
                 className="flex items-center gap-2 text-sm text-text-subtle hover:text-text-primary transition-colors"
                 aria-label="Email HNBK"
               >
                 <Mail size={14} />
-                hello@hnbk.ca
+                hello@hnbk.solutions
               </a>
               <a
                 href="tel:+16478809350"

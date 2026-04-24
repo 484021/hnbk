@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/"],
       },
     ],
-    sitemap: "https://hnbk.ca/sitemap.xml",
+    sitemap: "https://hnbk.solutions/sitemap.xml",
   };
 }

@@ -45,16 +45,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!post) return { title: "Post Not Found" };
 
   const description = post.meta_description ?? post.excerpt;
-  const ogImage = post.og_image_url ?? "https://hnbk.ca/og-image.png";
+  const ogImage = post.og_image_url ?? "https://hnbk.solutions/og-image.png";
 
   return {
     title: post.title,
     description,
-    alternates: { canonical: `https://hnbk.ca/blog/${slug}` },
+    alternates: { canonical: `https://hnbk.solutions/blog/${slug}` },
     openGraph: {
       title: post.title,
       description,
-      url: `https://hnbk.ca/blog/${slug}`,
+      url: `https://hnbk.solutions/blog/${slug}`,
       type: "article",
       publishedTime: post.published_at ?? undefined,
       images: [{ url: ogImage, width: 1200, height: 630, alt: post.title }],
@@ -91,11 +91,11 @@ export default async function BlogPostPage({ params }: Props) {
     publisher: {
       "@type": "Organization",
       name: "HNBK",
-      logo: { "@type": "ImageObject", url: "https://hnbk.ca/hnbk-logo.png" },
+      logo: { "@type": "ImageObject", url: "https://hnbk.solutions/hnbk-logo.png" },
     },
-    url: `https://hnbk.ca/blog/${post.slug}`,
-    mainEntityOfPage: `https://hnbk.ca/blog/${post.slug}`,
-    image: post.og_image_url ?? "https://hnbk.ca/og-image.png",
+    url: `https://hnbk.solutions/blog/${post.slug}`,
+    mainEntityOfPage: `https://hnbk.solutions/blog/${post.slug}`,
+    image: post.og_image_url ?? "https://hnbk.solutions/og-image.png",
     keywords: post.tags.join(", "),
   };
 

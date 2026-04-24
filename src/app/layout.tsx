@@ -34,14 +34,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_CA",
-    url: "https://hnbk.ca",
+    url: "https://hnbk.solutions",
     siteName: "HNBK",
     title: "HNBK — AI Orchestration & Custom Software for SMBs",
     description:
       "Deploy AI agents that automate complex workflows, eliminate manual work, and scale your operations.",
     images: [
       {
-        url: "https://hnbk.ca/og-image.png",
+        url: "https://hnbk.solutions/og-image.png",
         width: 1200,
         height: 630,
         alt: "HNBK — AI Orchestration & Custom Software",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     description:
       "Deploy AI agents that automate complex workflows and scale your operations.",
   },
-  alternates: { canonical: "https://hnbk.ca" },
+  alternates: { canonical: "https://hnbk.solutions" },
   robots: { index: true, follow: true },
   icons: {
     icon: "/favicon.ico",
@@ -66,14 +66,14 @@ const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "HNBK",
-  url: "https://hnbk.ca",
-  logo: "https://hnbk.ca/hnbk-logo.png",
+  url: "https://hnbk.solutions",
+  logo: "https://hnbk.solutions/hnbk-logo.png",
   description: "AI orchestration and custom software for Canadian SMBs",
   address: { "@type": "PostalAddress", addressCountry: "CA" },
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer service",
-    url: "https://hnbk.ca/contact",
+    url: "https://hnbk.solutions/contact",
   },
 };
 
