@@ -8,6 +8,7 @@ export async function geminiGenerate(
   prompt: string,
   useSearch = false,
   jsonMode = false,
+  model = "gemini-2.5-flash",
 ): Promise<string> {
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
