@@ -186,11 +186,14 @@ TARGET READER PERSONA:
 
 REQUIRED ARTICLE STRUCTURE (follow this order exactly — do not skip any section):
 
-1. HOOK (first 2 paragraphs, ~120 words)
+CRITICAL: Do NOT output any section label or heading for section 1. The article must open directly with a <p> tag — no "Hook", "HOOK", "1.", or any other label before the first paragraph. The hook is invisible structure for you, not text for the reader.
+
+1. HOOK (first 2 paragraphs, ~120 words) — NO HEADING, start directly with <p>
    - Open with a relatable scenario a GTA owner in this industry would immediately recognize
    - Name a specific GTA city in the first paragraph (e.g. "a Markham accounting firm" or "a Scarborough restaurant owner")
    - Reference a current stat or recent news item from the research brief in the first 2 paragraphs
    - No jargon in the first paragraph — write like you are talking to a busy owner, not a tech conference
+   - The word "Hook" must NEVER appear anywhere in the output HTML
 
 2. WHAT THIS IS COSTING YOU (~200 words, use this as the H2 heading)
    - Quantify the problem in CAD and hours per week — use stats from the research brief
@@ -257,6 +260,21 @@ export type PostData = {
   content: string;
 };
 
+// ─── Strip structural section labels Gemini sometimes leaks into the HTML ────
+// Removes "Hook", "HOOK", "1. HOOK" etc. that come from the prompt structure.
+export function sanitiseContent(html: string): string {
+  return html
+    // Remove any heading tag whose ENTIRE text is a structural label
+    .replace(/<h[1-6][^>]*>\s*(?:\d+\.\s*)?hook\s*<\/h[1-6]>/gi, "")
+    // Remove a bare <p> whose entire text is just "Hook" at the start
+    .replace(/^\s*<p>\s*(?:\d+\.\s*)?hook\s*<\/p>\s*/i, "")
+    // Remove plain-text "Hook" or "HOOK" that appears before the first <p>
+    .replace(/^\s*(?:\d+\.\s*)?hook\s*\n/i, "")
+    // Collapse any triple-newlines left behind
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 // ─── Parse Gemini JSON response ──────────────────────────────────────────────
 export function parsePostData(rawText: string): PostData {
   const cleaned = rawText
@@ -264,7 +282,10 @@ export function parsePostData(rawText: string): PostData {
     .replace(/^```\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
-  return JSON.parse(cleaned) as PostData;
+  const data = JSON.parse(cleaned) as PostData;
+  // Always sanitise content so leaked structural labels never reach the DB
+  if (data.content) data.content = sanitiseContent(data.content);
+  return data;
 }
 
 // ─── Sanitise slug ───────────────────────────────────────────────────────────
@@ -294,10 +315,17 @@ export function validatePost(postData: PostData): {
     .split(/\s+/)
     .filter(Boolean).length;
 
+  // Check for any leaked structural label that sanitiseContent() missed
+  const hasLeakedLabel = /<h[1-6][^>]*>\s*(?:\d+\.\s*)?hook\s*<\/h[1-6]>/i.test(
+    postData.content,
+  ) || /^\s*(?:\d+\.\s*)?hook\b/i.test(postData.content);
+
   const issues: string[] = [];
   if (!hasGeoTag) issues.push("no geo tag (GTA/Toronto/Ontario/etc.)");
   if (wordCount < 1000)
     issues.push(`content too short: ${wordCount} words (minimum 1000)`);
+  if (hasLeakedLabel)
+    issues.push("content still contains structural label 'Hook' — generation failed");
 
   return { valid: issues.length === 0, issues, wordCount };
 }
