@@ -55,6 +55,10 @@ export const metadata: Metadata = {
       "Deploy AI agents that automate complex workflows and scale your operations.",
   },
   robots: { index: true, follow: true },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
