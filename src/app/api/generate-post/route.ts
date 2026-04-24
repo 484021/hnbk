@@ -7,6 +7,7 @@ import {
   researchBroad,
   researchLocal,
   writeArticle,
+  retryWriteAsJson,
   parsePostData,
   sanitiseSlug,
   validatePost,
@@ -114,15 +115,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 7. Parse JSON
+  // 7. Parse JSON — retry once if Gemini returned non-JSON
   let postData;
   try {
     postData = parsePostData(rawText);
   } catch {
-    return NextResponse.json(
-      { error: "Failed to parse Gemini response as JSON", raw: rawText.slice(0, 800) },
-      { status: 500 },
-    );
+    try {
+      const retryRaw = await retryWriteAsJson(apiKey, topic, researchBroadText, researchLocalText);
+      postData = parsePostData(retryRaw);
+    } catch {
+      return NextResponse.json(
+        { error: "Failed to parse Gemini response as JSON after retry", raw: rawText.slice(0, 500) },
+        { status: 500 },
+      );
+    }
   }
 
   if (!postData.title || !postData.content || !postData.slug) {

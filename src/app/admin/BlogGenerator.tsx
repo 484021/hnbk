@@ -107,7 +107,12 @@ export default function BlogGenerator({
         researchBroadText: string;
         wordCount: number;
       }>("research_broad", { topic });
-      markDone("research_broad", `${broadWords.toLocaleString()} words of research gathered`);
+      markDone(
+        "research_broad",
+        broadWords === 0
+          ? "Search unavailable - article writer will use its own knowledge"
+          : `${broadWords.toLocaleString()} words of research gathered`,
+      );
 
       // 3. Local research
       markRunning("research_local");

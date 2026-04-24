@@ -276,16 +276,78 @@ export function sanitiseContent(html: string): string {
 }
 
 // ─── Parse Gemini JSON response ──────────────────────────────────────────────
+// Robust: tries direct parse first, then extracts the outermost {...} block
+// from the response in case Gemini added preamble or postamble text.
 export function parsePostData(rawText: string): PostData {
-  const cleaned = rawText
+  // 1. Strip markdown code fences
+  const stripped = rawText
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
-  const data = JSON.parse(cleaned) as PostData;
-  // Always sanitise content so leaked structural labels never reach the DB
-  if (data.content) data.content = sanitiseContent(data.content);
-  return data;
+
+  // 2. Try direct parse
+  try {
+    const data = JSON.parse(stripped) as PostData;
+    if (data.content) data.content = sanitiseContent(data.content);
+    return data;
+  } catch {
+    // fall through to extraction
+  }
+
+  // 3. Find the outermost { ... } block (handles preamble/postamble text)
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    try {
+      const data = JSON.parse(stripped.slice(start, end + 1)) as PostData;
+      if (data.content) data.content = sanitiseContent(data.content);
+      return data;
+    } catch {
+      // fall through
+    }
+  }
+
+  // 4. Nothing worked — throw with a diagnostic snippet
+  throw new Error(
+    `Could not extract JSON from Gemini response. Preview: ${
+      rawText.slice(0, 300)
+    }`,
+  );
+}
+
+// ─── Retry write with a strict JSON-only instruction ─────────────────────────
+// Called by the write step when parsePostData throws, to give Gemini one more
+// chance with an unambiguous "return only JSON" instruction prepended.
+export async function retryWriteAsJson(
+  apiKey: string,
+  topic: string,
+  researchBroadText: string,
+  researchLocalText: string,
+): Promise<string> {
+  return geminiGenerate(
+    apiKey,
+    `IMPORTANT: Your previous response could not be parsed as JSON. You MUST return ONLY a valid JSON object — no explanatory text, no markdown fences, no preamble, no postamble. Start your response with { and end with }. Nothing else.
+
+Now write the blog article for topic: "${topic}"
+
+Research context (broad):
+${researchBroadText || "Not available — use your own knowledge."}
+
+Research context (GTA/Ontario):
+${researchLocalText || "Not available — use your own knowledge."}
+
+Return this exact JSON shape:
+{
+  "title": "50-65 char SEO title with long-tail keyword",
+  "slug": "url-slug-3-to-7-words",
+  "excerpt": "2-sentence Google snippet",
+  "meta_description": "150-160 char SEO meta",
+  "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
+  "content": "full HTML using only h2 h3 p ul li strong blockquote hr tags, 1400-1800 words, NO Hook heading, open directly with <p>"
+}`,
+    true,
+  );
 }
 
 // ─── Sanitise slug ───────────────────────────────────────────────────────────
