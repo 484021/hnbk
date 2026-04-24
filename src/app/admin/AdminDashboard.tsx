@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import BlogGenerator from "./BlogGenerator";
 
 type Post = {
   id: string;
@@ -103,6 +104,8 @@ export default function AdminDashboard({ initialPosts }: { initialPosts: Post[] 
       </header>
 
       <main className="max-w-5xl mx-auto p-6">
+        <BlogGenerator onPostCreated={(post) => setPosts((prev) => [post, ...prev])} />
+
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-gray-800 text-gray-200 text-sm">
             {msg}
