@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "Contact",
   description:
     "Book a free strategy call with HNBK. We'll audit your operations and show you exactly what AI can do.",
+  alternates: { canonical: "https://hnbk.ca/contact" },
 };
 
 export default function ContactPage() {

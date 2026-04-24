@@ -7,6 +7,7 @@ import { ArrowRight } from "lucide-react";
 export const metadata: Metadata = {
   title: "Case Studies",
   description: "See how HNBK has helped SMBs automate operations and scale with AI.",
+  alternates: { canonical: "https://hnbk.ca/case-studies" },
 };
 
 // Placeholder — data will come from Supabase once case_studies table is populated

@@ -54,10 +54,26 @@ export const metadata: Metadata = {
     description:
       "Deploy AI agents that automate complex workflows and scale your operations.",
   },
+  alternates: { canonical: "https://hnbk.ca" },
   robots: { index: true, follow: true },
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
+  },
+};
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "HNBK",
+  url: "https://hnbk.ca",
+  logo: "https://hnbk.ca/hnbk-logo.png",
+  description: "AI orchestration and custom software for Canadian SMBs",
+  address: { "@type": "PostalAddress", addressCountry: "CA" },
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer service",
+    url: "https://hnbk.ca/contact",
   },
 };
 
@@ -71,6 +87,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+      </head>
       <body className="bg-bg-base text-text-primary flex flex-col min-h-screen">
         <a
           href="#main-content"

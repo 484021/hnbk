@@ -158,3 +158,86 @@ body {
 .glow-border:hover::after {
   opacity: 0.6;
 }
+
+/* ─── Blog Prose ─────────────────────────────────────────── */
+.blog-prose {
+  color: #CCCCCC;
+  font-size: 1.0625rem;
+  line-height: 1.8;
+}
+.blog-prose h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+.blog-prose h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #EEEEEE;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+.blog-prose p {
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.blog-prose ul,
+.blog-prose ol {
+  margin: 1.25rem 0;
+  padding-left: 1.5rem;
+}
+.blog-prose li {
+  margin-bottom: 0.5rem;
+}
+.blog-prose ul > li { list-style-type: disc; }
+.blog-prose ol > li { list-style-type: decimal; }
+.blog-prose strong {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+.blog-prose a {
+  color: #C06FFF;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+.blog-prose a:hover { color: #FFFFFF; }
+.blog-prose blockquote {
+  border-left: 3px solid #A23BEC;
+  padding-left: 1.25rem;
+  margin: 1.5rem 0;
+  color: #999999;
+  font-style: italic;
+}
+.blog-prose code {
+  background: rgba(162, 59, 236, 0.12);
+  border: 1px solid rgba(162, 59, 236, 0.2);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+  font-size: 0.875em;
+  color: #C06FFF;
+  font-family: var(--font-geist-mono);
+}
+.blog-prose pre {
+  background: #111111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+.blog-prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #CCCCCC;
+  font-size: 0.875rem;
+}
+.blog-prose hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 2.5rem 0;
+}

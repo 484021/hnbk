@@ -62,17 +62,27 @@ create policy "Service role full access on case_studies"
 
 -- ─── Blog Posts ───────────────────────────────────────────────
 create table if not exists public.blog_posts (
-  id            uuid primary key default uuid_generate_v4(),
-  slug          text unique not null,
-  title         text not null,
-  excerpt       text not null,
-  content       text not null,
-  tags          text[] not null default '{}',
-  author        text not null default 'Santhosh',
-  published     boolean not null default false,
-  ai_generated  boolean not null default false,
-  created_at    timestamptz not null default now()
+  id               uuid primary key default uuid_generate_v4(),
+  slug             text unique not null,
+  title            text not null,
+  excerpt          text not null,           -- 1–2 sentence summary shown on listing page
+  content          text not null,           -- full post body as HTML
+  meta_description text,                    -- 150–160 chars for SEO (falls back to excerpt)
+  og_image_url     text,                    -- null = use site default OG image
+  tags             text[] not null default '{}',
+  author           text not null default 'HNBK Team',
+  published        boolean not null default false,
+  ai_generated     boolean not null default false,
+  published_at     timestamptz,             -- set when published = true
+  updated_at       timestamptz not null default now(),
+  created_at       timestamptz not null default now()
 );
+
+-- Migration: add columns if upgrading from earlier schema
+alter table public.blog_posts add column if not exists meta_description text;
+alter table public.blog_posts add column if not exists og_image_url text;
+alter table public.blog_posts add column if not exists published_at timestamptz;
+alter table public.blog_posts add column if not exists updated_at timestamptz not null default now();
 
 alter table public.blog_posts enable row level security;
 

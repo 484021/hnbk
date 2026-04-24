@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "HNBK — a Toronto-based AI Orchestration & Custom Software company built to help SMBs scale operations with intelligence.",
+  alternates: { canonical: "https://hnbk.ca/about" },
 };
 
 export default function AboutPage() {
