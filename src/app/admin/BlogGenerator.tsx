@@ -22,11 +22,6 @@ type PostRecord = {
   created_at: string;
 };
 
-type SSEEvent =
-  | { type: "step"; id: string; label: string; status: StepStatus; detail?: string }
-  | { type: "complete"; slug: string; title: string; url: string; post: PostRecord }
-  | { type: "error"; message: string };
-
 const INITIAL_STEPS: Step[] = [
   { id: "topic", label: "Selecting topic", status: "pending" },
   { id: "research_broad", label: "Researching industry trends & statistics", status: "pending" },
@@ -59,8 +54,35 @@ export default function BlogGenerator({
     setElapsed(0);
   }
 
-  function updateStep(id: string, updates: Partial<Step>) {
-    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+  function markRunning(id: string, label?: string) {
+    setSteps((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: "running", label: label ?? s.label, detail: undefined } : s)),
+    );
+  }
+
+  function markDone(id: string, detail?: string) {
+    setSteps((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: "done", detail } : s)),
+    );
+  }
+
+  function markError(id: string, detail?: string) {
+    setSteps((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: "error", detail } : s)),
+    );
+  }
+
+  async function callStep<T>(stepName: string, body: Record<string, unknown>): Promise<T> {
+    const res = await fetch("/api/admin/blog-step", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ step: stepName, ...body }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? `Step "${stepName}" failed with status ${res.status}`);
+    }
+    return data as T;
   }
 
   async function generate() {
@@ -71,75 +93,53 @@ export default function BlogGenerator({
       setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
     }, 1000);
 
-    let completed = false;
-
     try {
-      const res = await fetch("/api/admin/generate-post-stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topicInput.trim() || undefined }),
+      // 1. Topic
+      markRunning("topic");
+      const { topic } = await callStep<{ topic: string }>("topic", {
+        topic: topicInput.trim() || undefined,
       });
+      markDone("topic", topic);
 
-      if (!res.ok || !res.body) {
-        throw new Error(`Request failed with status ${res.status}`);
-      }
+      // 2. Broad research
+      markRunning("research_broad");
+      const { researchBroadText, wordCount: broadWords } = await callStep<{
+        researchBroadText: string;
+        wordCount: number;
+      }>("research_broad", { topic });
+      markDone("research_broad", `${broadWords.toLocaleString()} words of research gathered`);
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      // 3. Local research
+      markRunning("research_local");
+      const { researchLocalText, wordCount: localWords } = await callStep<{
+        researchLocalText: string;
+        wordCount: number;
+      }>("research_local", { topic });
+      markDone("research_local", `${localWords.toLocaleString()} words of local data gathered`);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // 4. Write + validate (validate happens inside the write step)
+      markRunning("write");
+      const { postData, wordCount, rawText } = await callStep<{
+        postData: { title: string };
+        wordCount: number;
+        rawText: string;
+      }>("write", { topic, researchBroadText, researchLocalText });
+      markDone("write", `${wordCount.toLocaleString()} words - "${postData.title}"`);
 
-        buffer += decoder.decode(value, { stream: true });
+      // 5. Validate (done inside write step - mark as done immediately)
+      markRunning("validate");
+      markDone("validate", `Geo tag confirmed  ${wordCount.toLocaleString()} words`);
 
-        // SSE messages are separated by blank lines (\n\n)
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() ?? "";
+      // 6. Save
+      markRunning("save");
+      const { post, url } = await callStep<{ post: PostRecord; url: string }>("save", { rawText });
+      markDone("save", url);
 
-        for (const part of parts) {
-          const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
-          if (!dataLine) continue;
-
-          let event: SSEEvent;
-          try {
-            event = JSON.parse(dataLine.slice(6));
-          } catch {
-            continue;
-          }
-
-          if (event.type === "step") {
-            updateStep(event.id, {
-              label: event.label,
-              status: event.status,
-              detail: event.detail,
-            });
-          } else if (event.type === "complete") {
-            completed = true;
-            setResult({ slug: event.slug, title: event.title, url: event.url });
-            onPostCreated?.(event.post);
-          } else if (event.type === "error") {
-            completed = true;
-            setErrorMsg(event.message);
-            setSteps((prev) =>
-              prev.map((s) => (s.status === "running" ? { ...s, status: "error" } : s)),
-            );
-          }
-        }
-      }
-
-      // Stream closed without a complete or error event — likely a timeout
-      if (!completed) {
-        setErrorMsg(
-          "Generation timed out (60s limit). Refresh the page — the post may still have been saved.",
-        );
-        setSteps((prev) =>
-          prev.map((s) => (s.status === "running" ? { ...s, status: "error" } : s)),
-        );
-      }
+      setResult({ slug: post.slug, title: post.title, url });
+      onPostCreated?.(post);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Network error — please try again");
+      const message = err instanceof Error ? err.message : "Unknown error - please try again";
+      setErrorMsg(message);
       setSteps((prev) =>
         prev.map((s) => (s.status === "running" ? { ...s, status: "error" } : s)),
       );
@@ -164,14 +164,14 @@ export default function BlogGenerator({
     if (status === "done") {
       return (
         <span className="text-emerald-400 text-sm font-bold leading-none shrink-0" aria-hidden="true">
-          ✓
+          +
         </span>
       );
     }
     if (status === "error") {
       return (
         <span className="text-red-400 text-sm font-bold leading-none shrink-0" aria-hidden="true">
-          ✗
+          x
         </span>
       );
     }
@@ -192,7 +192,7 @@ export default function BlogGenerator({
         <div>
           <h2 className="text-white font-semibold text-sm">Generate Blog Post</h2>
           <p className="text-gray-500 text-xs mt-0.5">
-            4-step AI pipeline: topic → research → write → publish
+            4-step AI pipeline: topic -&gt; research -&gt; write -&gt; publish
           </p>
         </div>
         {generating && (
@@ -203,7 +203,7 @@ export default function BlogGenerator({
       </div>
 
       <div className="p-5">
-        {/* Topic input + Generate button — shown when idle */}
+        {/* Topic input + Generate button */}
         {!showPipeline && (
           <div className="flex gap-3">
             <label htmlFor="blog-topic-input" className="sr-only">
@@ -251,7 +251,7 @@ export default function BlogGenerator({
                   >
                     {step.label}
                     {step.status === "running" && (
-                      <span className="ml-2 text-xs text-gray-500 animate-pulse">working…</span>
+                      <span className="ml-2 text-xs text-gray-500 animate-pulse">working...</span>
                     )}
                   </div>
                   {step.detail && (
@@ -277,7 +277,7 @@ export default function BlogGenerator({
         {result && (
           <div className="mt-4 px-4 py-3 rounded-lg bg-emerald-900/20 border border-emerald-800/40">
             <p className="text-emerald-400 text-sm font-medium">Published successfully</p>
-            <p className="text-emerald-300/70 text-xs mt-0.5 truncate">"{result.title}"</p>
+            <p className="text-emerald-300/70 text-xs mt-0.5 truncate">&quot;{result.title}&quot;</p>
             <div className="flex gap-3 mt-3">
               <a
                 href={result.url}
@@ -285,7 +285,7 @@ export default function BlogGenerator({
                 rel="noopener noreferrer"
                 className="text-xs px-2.5 py-1 rounded bg-emerald-800/60 hover:bg-emerald-700/60 text-emerald-200 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               >
-                View post →
+                View post
               </a>
               <button
                 type="button"
@@ -301,10 +301,10 @@ export default function BlogGenerator({
           </div>
         )}
 
-        {/* Generating — footer note */}
+        {/* Footer note while generating */}
         {generating && (
           <p className="mt-3 text-xs text-gray-600">
-            This takes 40–60 seconds — do not close this tab
+            Each step runs independently - no timeouts
           </p>
         )}
       </div>
