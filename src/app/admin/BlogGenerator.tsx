@@ -73,14 +73,36 @@ export default function BlogGenerator({
   }
 
   async function callStep<T>(stepName: string, body: Record<string, unknown>): Promise<T> {
-    const res = await fetch("/api/admin/blog-step", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ step: stepName, ...body }),
-    });
-    const data = await res.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 58000); // 58s client-side limit
+    let res: Response;
+    try {
+      res = await fetch("/api/admin/blog-step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: stepName, ...body }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      if ((err as Error).name === "AbortError") {
+        throw new Error(`Step "${stepName}" timed out (>58s). The Gemini search call may be slow — try again.`);
+      }
+      throw err;
+    }
+    clearTimeout(timeout);
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // Server returned non-JSON (Vercel 504, gateway error, etc.)
+      throw new Error(
+        `Step "${stepName}" returned an unexpected response (status ${res.status}). The server may have timed out — try again.`,
+      );
+    }
     if (!res.ok) {
-      throw new Error(data.error ?? `Step "${stepName}" failed with status ${res.status}`);
+      throw new Error((data.error as string) ?? `Step "${stepName}" failed with status ${res.status}`);
     }
     return data as T;
   }
