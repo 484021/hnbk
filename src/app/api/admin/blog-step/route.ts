@@ -75,7 +75,15 @@ export async function POST(req: NextRequest) {
       // proceed without deduplication
     }
 
-    const topic = await selectTopic(apiKey, recentTitles);
+    let topic: string;
+    try {
+      topic = await selectTopic(apiKey, recentTitles);
+    } catch (err) {
+      return NextResponse.json(
+        { error: "Topic generation failed", details: String(err) },
+        { status: 502 },
+      );
+    }
     return NextResponse.json({ topic });
   }
 
@@ -84,19 +92,35 @@ export async function POST(req: NextRequest) {
     if (!body.topic) {
       return NextResponse.json({ error: "Missing topic" }, { status: 400 });
     }
-    const text = await researchBroad(apiKey, body.topic);
+    let text: string;
+    try {
+      text = await researchBroad(apiKey, body.topic);
+    } catch (err) {
+      return NextResponse.json(
+        { error: "Broad research failed", details: String(err) },
+        { status: 502 },
+      );
+    }
     const wordCount = text.split(/\s+/).filter(Boolean).length;
     return NextResponse.json({ researchBroadText: text, wordCount });
   }
 
-  // ── Step: research_local ────────────────────────────────────────────────────
+  // ── Step: research_local ──────────────────────────────────────────────────────
   if (step === "research_local") {
     if (!body.topic) {
       return NextResponse.json({ error: "Missing topic" }, { status: 400 });
     }
-    const text = await researchLocal(apiKey, body.topic);
-    const wordCount = text.split(/\s+/).filter(Boolean).length;
-    return NextResponse.json({ researchLocalText: text, wordCount });
+    let localText: string;
+    try {
+      localText = await researchLocal(apiKey, body.topic);
+    } catch (err) {
+      return NextResponse.json(
+        { error: "Local research failed", details: String(err) },
+        { status: 502 },
+      );
+    }
+    const localWordCount = localText.split(/\s+/).filter(Boolean).length;
+    return NextResponse.json({ researchLocalText: localText, wordCount: localWordCount });
   }
 
   // ── Step: write ─────────────────────────────────────────────────────────────
@@ -120,14 +144,21 @@ export async function POST(req: NextRequest) {
       // proceed without internal links
     }
 
-    const rawText = await writeArticle(
-      apiKey,
-      body.topic,
-      body.researchBroadText ?? "",
-      body.researchLocalText ?? "",
-      existingPosts,
-    );
-
+    let rawText: string;
+    try {
+      rawText = await writeArticle(
+        apiKey,
+        body.topic,
+        body.researchBroadText ?? "",
+        body.researchLocalText ?? "",
+        existingPosts,
+      );
+    } catch (err) {
+      return NextResponse.json(
+        { error: "Article generation failed", details: String(err) },
+        { status: 502 },
+      );
+    }
     let postData;
     try {
       postData = parsePostData(rawText);

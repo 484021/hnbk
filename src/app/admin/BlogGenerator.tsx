@@ -102,7 +102,9 @@ export default function BlogGenerator({
       );
     }
     if (!res.ok) {
-      throw new Error((data.error as string) ?? `Step "${stepName}" failed with status ${res.status}`);
+      const msg = (data.error as string) ?? `Step "${stepName}" failed with status ${res.status}`;
+      const details = data.details ? ` — ${data.details as string}` : "";
+      throw new Error(msg + details);
     }
     return data as T;
   }
