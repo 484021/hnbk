@@ -19,6 +19,7 @@ Read that file before making any code changes. It contains:
 - `.github/agents/ui-designer.agent.md` — UI design and component work
 - `.github/agents/ux-auditor.agent.md` — Accessibility and UX audits (read-only)
 - `.github/agents/fullstack-dev.agent.md` — Full-stack feature implementation
+- `.github/agents/security-auditor.agent.md` — OWASP Top 10 security audit (read-only)
 
 ## Skills
 - `.github/skills/design-section/SKILL.md` — Step-by-step workflow for building/redesigning sections
