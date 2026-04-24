@@ -43,6 +43,7 @@ export default async function BlogPage() {
     .from("blog_posts")
     .select("slug, title, excerpt, tags, published_at")
     .eq("published", true)
+    .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false });
 
   const posts: Post[] = data ?? [];

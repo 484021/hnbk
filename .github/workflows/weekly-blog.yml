@@ -1,0 +1,43 @@
+name: Weekly Blog Post
+
+on:
+  schedule:
+    # Every Monday at 9:00 AM UTC (5 AM ET)
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Optional topic override (leave blank for AI to pick)"
+        required: false
+        type: string
+
+jobs:
+  generate:
+    name: Generate Blog Post
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger generate-post API
+        run: |
+          BODY="{}"
+          if [ -n "${{ inputs.topic }}" ]; then
+            BODY=$(printf '{"topic":"%s"}' "${{ inputs.topic }}")
+          fi
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "https://hnbk-v2.vercel.app/api/generate-post" \
+            -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "$BODY")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY_OUT=$(echo "$RESPONSE" | head -n-1)
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY_OUT"
+
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "::error::Post generation failed with status $HTTP_CODE"
+            exit 1
+          fi

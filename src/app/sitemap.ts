@@ -8,7 +8,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { data: posts } = await supabase
     .from("blog_posts")
     .select("slug, updated_at")
-    .eq("published", true);
+    .eq("published", true)
+    .lte("published_at", new Date().toISOString());
 
   const blogEntries: MetadataRoute.Sitemap = (posts ?? []).map((p) => ({
     url: `https://hnbk.ca/blog/${p.slug}`,
