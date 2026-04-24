@@ -260,9 +260,10 @@ CRITICAL: Do NOT output any section label or heading for section 1. The article 
 7. SOURCES (required — place AFTER the closing CTA, at the very end of content)
    - Add: <hr><h2>Sources</h2><ol> ... </ol>
    - List EVERY source cited with a superscript in the article, in order
-   - Format each item with an id attribute: <li id="source-N">[N] Source name. "Statistic or finding." Month Year.</li>
-   - Example: <li id="source-1">[1] CFIB. "67% of Canadian SMBs cite labour as #1 cost." March 2026.</li>
-   - Use only sources actually found in the research briefs above — do not invent sources
+   - Format each item as: <li id="source-N">[N] <a href="URL" target="_blank" rel="noopener noreferrer">Source name</a>. "Statistic or finding." Month Year.</li>
+   - Example: <li id="source-1">[1] <a href="https://www.cfib-fcei.ca/example" target="_blank" rel="noopener noreferrer">CFIB</a>. "67% of Canadian SMBs cite labour as #1 cost." March 2026.</li>
+   - If no URL is available for a source, omit the anchor tag and just use the source name as plain text
+   - Use only sources actually found in the research briefs above — do not invent sources or URLs
 
 MANDATORY QUALITY REQUIREMENTS:
 - Total length: 1,400–1,800 words (not counting the Sources list)
@@ -396,7 +397,7 @@ Return this exact JSON shape:
   "excerpt": "2-sentence Google snippet",
   "meta_description": "150-160 char SEO meta",
   "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
-  "content": "full HTML. Use <sup><a href=\"#source-N\">[N]</a></sup> for every cited stat. End with <hr><h2>Sources</h2><ol><li id=\"source-N\">[N] Source. Finding. Date.</li>...</ol>. Allowed tags: h2 h3 p ul ol li strong blockquote sup a hr. Open directly with <p>, NO Hook heading."
+  "content": "full HTML. Use <sup><a href=\"#source-N\">[N]</a></sup> for every cited stat. End with <hr><h2>Sources</h2><ol><li id=\"source-N\">[N] <a href=\\\"URL\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Source name</a>. Finding. Date.</li>...</ol>. Allowed tags: h2 h3 p ul ol li strong blockquote sup a hr. Open directly with <p>, NO Hook heading."
 }`,
     false,  // no search grounding — JSON mode is incompatible with grounding
     true,   // jsonMode: forces valid JSON output
