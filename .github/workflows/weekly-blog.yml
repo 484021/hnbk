@@ -1,9 +1,10 @@
-name: Weekly Blog Post
+name: Daily Blog Post
 
 on:
   schedule:
-    # Every Monday at 9:00 AM UTC (5 AM ET)
-    - cron: "0 9 * * 1"
+    # Every day at 1:00 PM UTC = 9:00 AM EDT (Eastern Daylight Time, Apr–Nov)
+    # Adjust to 14:00 UTC in winter if you want strict 9 AM EST
+    - cron: "0 13 * * *"
   workflow_dispatch:
     inputs:
       topic:
@@ -15,7 +16,7 @@ jobs:
   generate:
     name: Generate Blog Post
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Trigger generate-post API
@@ -25,7 +26,7 @@ jobs:
             BODY=$(printf '{"topic":"%s"}' "${{ inputs.topic }}")
           fi
 
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 180 \
             -X POST "https://hnbk.solutions/api/generate-post" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \

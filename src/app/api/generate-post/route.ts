@@ -3,6 +3,9 @@ import { createServiceClient } from "@/lib/supabase";
 import { Resend } from "resend";
 import crypto from "crypto";
 
+// Allow up to 2 minutes — 4 Gemini API calls can take 60–90s total
+export const maxDuration = 120;
+
 // ─── Gemini REST helper ──────────────────────────────────────────────────────
 async function geminiGenerate(
   apiKey: string,
@@ -89,7 +92,7 @@ export async function POST(req: NextRequest) {
       .from("blog_posts")
       .select("title")
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(30);
     recentTitles = (recentPosts ?? []).map((p: { title: string }) => p.title);
   } catch {
     // proceed without deduplication if this fails
@@ -138,19 +141,105 @@ Respond with ONLY the topic title. No explanation, no punctuation at the end.`,
     }
   }
 
-  // 4. Research + write with Google Search grounding (single call)
+  // 4. Deep research — two dedicated Google-Search-grounded calls before writing
+  // This gives the article writer concrete, current facts rather than having to
+  // research and write simultaneously.
+
+  // 4a. Broad research: latest statistics, trends, and industry data
+  let researchBroad = "";
+  try {
+    researchBroad = await geminiGenerate(
+      apiKey,
+      `You are a research analyst. Your only job right now is to GATHER FACTS — do not write an article.
+
+Research topic: "${topic}"
+
+Using Google Search, find and return the following — focus on 2025–2026 data:
+
+1. STATISTICS (find 6–10 specific data points):
+   - Include the exact number, what it measures, the source name, and the year
+   - Example: "67% of Canadian SMBs report labour as their #1 cost (CFIB, 2025)"
+   - Prioritise Canadian/Ontario data; use US/global only if Canadian not available
+
+2. RECENT NEWS & TRENDS (find 4–6 items from the last 6 months):
+   - Brief headline + key fact from each
+   - Focus on what is changing or accelerating right now
+
+3. INDUSTRY CONTEXT:
+   - Current state of this industry/problem in Canada in 2026
+   - Any major shifts, disruptions, or adoption patterns
+
+4. EXPERT OPINIONS OR QUOTES (if findable):
+   - Name, title, organisation, and the key insight
+
+Return as plain text with clear section headers. Be specific and factual — no fluff.`,
+      true, // Google Search grounding
+    );
+  } catch {
+    researchBroad = ""; // fall back — article writer will do its own search
+  }
+
+  // 4b. Local research: GTA/Ontario-specific data, regulations, and examples
+  let researchLocal = "";
+  try {
+    researchLocal = await geminiGenerate(
+      apiKey,
+      `You are a research analyst focused on Ontario and the Greater Toronto Area. GATHER FACTS ONLY — do not write an article.
+
+Research topic: "${topic}"
+
+Using Google Search, find GTA and Ontario-specific information from 2024–2026:
+
+1. ONTARIO REGULATIONS & PROGRAMS relevant to this topic:
+   - WSIB, OHSA, ESA, Ministry of Labour, CRA, HST rules, Ontario grants
+   - Any recent regulatory changes (2024–2026)
+
+2. GTA MARKET DATA:
+   - Local statistics, adoption rates, or costs specific to Ontario/GTA businesses
+   - Compare to national averages if available
+
+3. LOCAL NEWS & CASE STUDIES:
+   - Ontario or GTA businesses doing something notable in this area
+   - Local industry associations (e.g. BILD, OREA, ORA, OBAA) reports or statements
+
+4. ONTARIO ECONOMIC CONTEXT:
+   - Labour market, minimum wage ($17.20/hr as of Oct 2024), cost-of-living pressures
+   - Any GTA-specific business challenges relevant to this topic
+
+Return as plain text with clear section headers. Be specific — include numbers, dates, and sources.`,
+      true, // Google Search grounding
+    );
+  } catch {
+    researchLocal = ""; // fall back
+  }
+
+  // 5. Write authoritative article using the research findings
   let rawText: string;
   try {
     rawText = await geminiGenerate(
       apiKey,
-      `You are a content writer for HNBK (hnbk.solutions), a Toronto-based AI and automation company serving Greater Toronto Area SMBs.
+      `You are a senior content writer and industry expert for HNBK (hnbk.solutions), a Toronto-based AI and automation company serving Greater Toronto Area SMBs.
 
-Write a comprehensive, SEO-optimized blog article on: "${topic}"
+Write a DEFINITIVE, AUTHORITATIVE guide on: "${topic}"
+
+You have been provided with research findings below. You MUST use these findings — cite specific statistics and reference current events. This article should be the most comprehensive, useful piece on this topic that a GTA SMB owner can find.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESEARCH BRIEF — BROAD TRENDS & STATS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${researchBroad || "No pre-research available — use Google Search grounding to find current data."}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESEARCH BRIEF — GTA/ONTARIO SPECIFIC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${researchLocal || "No pre-research available — use Google Search grounding to find Ontario-specific data."}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ABOUT HNBK:
 - Services: AI agent orchestration, custom software, business automation, AI strategy consulting
 - Audience: GTA business owners, 5–100 employees, owner-operated, looking to grow without hiring
 - Voice: Authoritative, practical, plain English — no jargon, no AI hype, specific real-world examples
+- Position: trusted expert and advisor, not a salesperson
 
 TARGET READER PERSONA:
 - Owner or GM of a GTA small business (Toronto, Mississauga, Brampton, Markham, Vaughan, Scarborough, Etobicoke, North York)
@@ -160,56 +249,64 @@ TARGET READER PERSONA:
 
 REQUIRED ARTICLE STRUCTURE (follow this order exactly — do not skip any section):
 
-1. HOOK (first 2 paragraphs, ~100 words)
+1. HOOK (first 2 paragraphs, ~120 words)
    - Open with a relatable scenario a GTA owner in this industry would immediately recognize
    - Name a specific GTA city in the first paragraph (e.g. "a Markham accounting firm" or "a Scarborough restaurant owner")
-   - Name a specific pain point and hint at the cost it is creating
+   - Reference a current stat or recent news item from the research brief in the first 2 paragraphs
    - No jargon in the first paragraph — write like you are talking to a busy owner, not a tech conference
 
-2. WHAT THIS IS COSTING YOU (~150 words, use this as the H2 heading)
-   - Quantify the problem in CAD and hours per week
+2. WHAT THIS IS COSTING YOU (~200 words, use this as the H2 heading)
+   - Quantify the problem in CAD and hours per week — use stats from the research brief
    - Use a specific example: "A typical Toronto [industry] business with 10 staff spends roughly $X/month on [task]"
-   - Reference relevant Ontario context where applicable (WSIB rates, Ontario minimum wage $17.20/hr, HST filing, construction season)
+   - Reference relevant Ontario context (WSIB rates, Ontario minimum wage $17.20/hr, HST, OHSA, construction season)
+   - Cite at least 2 statistics with source names
 
-3. HOW TO FIX IT: 3–5 STEPS (~500 words, one H2 per step)
+3. HOW TO FIX IT: 3–5 STEPS (~600 words, one H2 per step)
    - Each step is concrete and actionable — what to do, what tool or approach to use, what result to expect
    - Use real tool categories or approach names (not just "use AI") — e.g. "automated follow-up sequences", "job costing software", "AI dispatch routing"
    - Include at least 1 CAD cost estimate or hours-saved figure per step
+   - Integrate research statistics to support each recommendation
 
-4. REAL-WORLD GTA EXAMPLE (~200 words, H2 heading: "How [Business Name] Did It")
+4. WHAT THE NUMBERS SAY (~200 words, H2 heading: "What the Numbers Say")
+   - Cite 3–5 specific statistics from the research brief, each with source name and year
+   - Show the scale of the problem or the scale of the opportunity
+   - Connect the statistics to the GTA/Ontario context
+
+5. REAL-WORLD GTA EXAMPLE (~200 words, H2 heading: "How [Business Name] Did It")
    - Invent a plausible GTA business: give it a name, city, industry, and employee count
    - Example format: "Maple Crest Plumbing, a Brampton contractor with 14 employees..."
    - Show a specific before/after: hours per week saved, CAD cost reduction, or revenue impact
    - State an approximate payback period (e.g. "recovered their setup costs within 6 weeks")
    - Keep numbers realistic — not $1M savings, more like "saved 11 hours/week and $2,400/month in admin time"
 
-5. CLOSING CTA (final 2 sentences only — do not add a heading)
+6. CLOSING CTA (final 2 sentences only — do not add a heading)
    - Invite the reader to learn more or book a free call — no pressure language
    - The first sentence must reference the article's specific industry or task — not a generic "automate your business"
    - Must mention HNBK by name and include hnbk.solutions
    - Example: "If you want to see exactly how this would work for your [industry] business, HNBK helps GTA owners build these systems — visit hnbk.solutions to book a free 30-minute walkthrough."
 
-ADDITIONAL REQUIREMENTS:
-- Total length: 1,000–1,400 words
+MANDATORY QUALITY REQUIREMENTS:
+- Total length: 1,400–1,800 words
+- Must cite AT LEAST 3 specific statistics with source name and year (use research brief above)
 - All financial figures in CAD
-- Include current stats or recent trends (use Google Search grounding)
+- Use <blockquote> for any direct quotes from named sources
 - HTML tags: <h2> <h3> <p> <ul> <li> <strong> <blockquote> <hr> only — no <div> no <span> no <a>
 - Tags array: MUST include at least 1 geo tag (choose from: GTA, Toronto, Ontario, Mississauga, Brampton) AND at least 1 industry or topic tag
-- title: 50–60 characters, includes a long-tail keyword
+- title: 50–65 characters, includes a long-tail keyword
 - meta_description: 150–160 characters, includes a benefit and a keyword
 - excerpt: 2 sentences, reads naturally as a Google search snippet
 
 CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before or after. Just valid JSON.
 
 {
-  "title": "SEO title, 50–60 characters, includes long-tail keyword",
+  "title": "SEO title, 50–65 characters, includes long-tail keyword",
   "slug": "url-slug-lowercase-hyphens-only-3-to-7-words",
   "excerpt": "2-sentence summary, 150–160 characters total, reads like a Google snippet",
   "meta_description": "SEO meta, 150–160 characters, includes benefit + keyword",
   "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
   "content": "full HTML using only allowed tags"
 }`,
-      true, // Google Search grounding enabled
+      true, // Google Search grounding — supplements the pre-research
     );
   } catch (err) {
     return NextResponse.json(
@@ -266,7 +363,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
 
   const validationIssues: string[] = [];
   if (!hasGeoTag) validationIssues.push("no geo tag (GTA/Toronto/Ontario/etc.)");
-  if (wordCount < 700) validationIssues.push(`content too short: ${wordCount} words (minimum 700)`);
+  if (wordCount < 1000) validationIssues.push(`content too short: ${wordCount} words (minimum 1000)`);
 
   if (validationIssues.length > 0) {
     console.error("[blog] quality validation failed:", validationIssues.join("; "));
@@ -283,7 +380,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
-  // 6. Save to Supabase — published=true but published_at is 24h in the future
+  // 6. Save to Supabase — published=true, published_at = now (live immediately)
   // Guard against slug collision — append YYYY-MM-DD suffix if slug already exists
   const { data: existingSlug } = await supabase
     .from("blog_posts")
@@ -295,7 +392,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
     postData.slug = `${postData.slug}-${new Date().toISOString().slice(0, 10)}`;
   }
 
-  const publishAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const publishAt = new Date().toISOString(); // publish immediately
 
   const { data: saved, error: dbError } = await supabase
     .from("blog_posts")
@@ -325,28 +422,23 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const toEmail = process.env.CONTACT_TO_EMAIL ?? "hello@hnbk.solutions";
-    const publishLocal = new Date(publishAt).toLocaleString("en-CA", {
-      timeZone: "America/Toronto",
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
     await resend.emails.send({
       from: "HNBK Blogger <noreply@hnbk.solutions>",
       to: toEmail,
-      subject: `New AI post ready: "${postData.title}"`,
+      subject: `New post live: "${postData.title}"`,
       html: `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a;">
-          <h2 style="color:#A23BEC;">New Blog Post Generated</h2>
+          <h2 style="color:#A23BEC;">New Blog Post Published</h2>
           <table style="width:100%;border-collapse:collapse;">
             <tr><td style="padding:6px 0;font-weight:bold;width:140px;">Title</td><td>${postData.title}</td></tr>
             <tr><td style="padding:6px 0;font-weight:bold;">Slug</td><td>/blog/${postData.slug}</td></tr>
-            <tr><td style="padding:6px 0;font-weight:bold;">Auto-publishes</td><td>${publishLocal} ET</td></tr>
+            <tr><td style="padding:6px 0;font-weight:bold;">Published</td><td>Live now</td></tr>
             <tr><td style="padding:6px 0;font-weight:bold;">Tags</td><td>${(postData.tags ?? []).join(", ")}</td></tr>
           </table>
           <hr style="border:none;border-top:1px solid #eee;margin:16px 0;" />
           <p style="color:#555;font-size:14px;">
-            <strong>To cancel:</strong> delete row with slug <code>${postData.slug}</code> from Supabase → blog_posts before ${publishLocal}.<br />
-            <strong>Preview after publish:</strong> <a href="https://hnbk.solutions/blog/${postData.slug}">hnbk.solutions/blog/${postData.slug}</a>
+            <strong>View live post:</strong> <a href="https://hnbk.solutions/blog/${postData.slug}">hnbk.solutions/blog/${postData.slug}</a><br />
+            <strong>To unpublish:</strong> set <code>published = false</code> on slug <code>${postData.slug}</code> in Supabase → blog_posts.
           </p>
         </div>
       `,
