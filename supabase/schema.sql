@@ -83,6 +83,7 @@ alter table public.blog_posts add column if not exists meta_description text;
 alter table public.blog_posts add column if not exists og_image_url text;
 alter table public.blog_posts add column if not exists published_at timestamptz;
 alter table public.blog_posts add column if not exists updated_at timestamptz not null default now();
+alter table public.blog_posts add column if not exists ai_generated boolean not null default false;
 
 alter table public.blog_posts enable row level security;
 
@@ -106,3 +107,4 @@ create index if not exists leads_created_at_idx         on public.leads (created
 create index if not exists case_studies_slug_idx        on public.case_studies (slug);
 create index if not exists blog_posts_slug_idx          on public.blog_posts (slug);
 create index if not exists blog_posts_published_idx     on public.blog_posts (published, created_at desc);
+create index if not exists blog_posts_published_at_idx  on public.blog_posts (published_at desc);
