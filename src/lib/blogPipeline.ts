@@ -159,6 +159,12 @@ export type ExistingPost = { slug: string; title: string };
 // Keeps total prompt tokens low so Gemini completes well under 60s.
 const RESEARCH_MAX_WORDS = 600;
 
+function truncateWords(text: string, maxWords: number): string {
+  const words = text.split(/\s+/);
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(" ") + " …";
+}
+
 export async function writeArticle(
   apiKey: string,
   topic: string,
