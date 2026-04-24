@@ -26,7 +26,7 @@ jobs:
           fi
 
           RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -X POST "https://hnbk-v2.vercel.app/api/generate-post" \
+            -X POST "https://hnbk.solutions/api/generate-post" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
             -d "$BODY")

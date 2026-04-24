@@ -10,12 +10,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Blog",
   description:
-    "Practical insights on AI orchestration, business automation, and custom software for Canadian SMBs — from the HNBK team.",
+    "Practical guides on AI automation, cost reduction, and efficiency for Greater Toronto Area small business owners — from the HNBK team.",
   alternates: { canonical: "https://hnbk.solutions/blog" },
   openGraph: {
-    title: "The HNBK Blog — AI & Automation Insights",
+    title: "The HNBK Blog — AI & Automation for GTA Business Owners",
     description:
-      "Practical insights on AI orchestration, business automation, and custom software for Canadian SMBs.",
+      "Practical guides on AI automation, cost reduction, and efficiency for Greater Toronto Area small business owners.",
     url: "https://hnbk.solutions/blog",
   },
 };

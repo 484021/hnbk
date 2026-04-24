@@ -81,6 +81,20 @@ export async function POST(req: NextRequest) {
     // empty body is fine — topic will be auto-selected
   }
 
+  // 2.5. Fetch recent post titles for topic deduplication (non-fatal)
+  const supabase = createServiceClient();
+  let recentTitles: string[] = [];
+  try {
+    const { data: recentPosts } = await supabase
+      .from("blog_posts")
+      .select("title")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    recentTitles = (recentPosts ?? []).map((p: { title: string }) => p.title);
+  } catch {
+    // proceed without deduplication if this fails
+  }
+
   // 3. Pick topic with Gemini if none provided
   if (!topic) {
     try {
@@ -109,6 +123,9 @@ TOPIC REQUIREMENTS:
 - Actionable and practical — the reader should know exactly what the article will teach them
 - 5–12 words long
 - Avoid generic topics; favour underserved niches in GTA industries
+
+AVOID THESE RECENTLY PUBLISHED TOPICS (do not repeat the same industry, pain point, or angle as any of these):
+${recentTitles.length > 0 ? recentTitles.map((t, i) => `${i + 1}. ${t}`).join("\n") : "None yet — this is the first post."}
 
 Respond with ONLY the topic title. No explanation, no punctuation at the end.`,
         )
@@ -145,6 +162,7 @@ REQUIRED ARTICLE STRUCTURE (follow this order exactly — do not skip any sectio
 
 1. HOOK (first 2 paragraphs, ~100 words)
    - Open with a relatable scenario a GTA owner in this industry would immediately recognize
+   - Name a specific GTA city in the first paragraph (e.g. "a Markham accounting firm" or "a Scarborough restaurant owner")
    - Name a specific pain point and hint at the cost it is creating
    - No jargon in the first paragraph — write like you are talking to a busy owner, not a tech conference
 
@@ -162,10 +180,12 @@ REQUIRED ARTICLE STRUCTURE (follow this order exactly — do not skip any sectio
    - Invent a plausible GTA business: give it a name, city, industry, and employee count
    - Example format: "Maple Crest Plumbing, a Brampton contractor with 14 employees..."
    - Show a specific before/after: hours per week saved, CAD cost reduction, or revenue impact
+   - State an approximate payback period (e.g. "recovered their setup costs within 6 weeks")
    - Keep numbers realistic — not $1M savings, more like "saved 11 hours/week and $2,400/month in admin time"
 
 5. CLOSING CTA (final 2 sentences only — do not add a heading)
    - Invite the reader to learn more or book a free call — no pressure language
+   - The first sentence must reference the article's specific industry or task — not a generic "automate your business"
    - Must mention HNBK by name and include hnbk.solutions
    - Example: "If you want to see exactly how this would work for your [industry] business, HNBK helps GTA owners build these systems — visit hnbk.solutions to book a free 30-minute walkthrough."
 
@@ -233,6 +253,29 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
     );
   }
 
+  // 5.5. Quality validation — reject posts that miss key GTA persona requirements
+  const geoTagSet = new Set([
+    "gta", "toronto", "ontario", "mississauga", "brampton",
+    "markham", "vaughan", "scarborough", "etobicoke", "north york",
+  ]);
+  const hasGeoTag = (postData.tags ?? []).some((t) => geoTagSet.has(t.toLowerCase()));
+  const wordCount = postData.content
+    .replace(/<[^>]+>/g, " ")
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+  const validationIssues: string[] = [];
+  if (!hasGeoTag) validationIssues.push("no geo tag (GTA/Toronto/Ontario/etc.)");
+  if (wordCount < 700) validationIssues.push(`content too short: ${wordCount} words (minimum 700)`);
+
+  if (validationIssues.length > 0) {
+    console.error("[blog] quality validation failed:", validationIssues.join("; "));
+    return NextResponse.json(
+      { error: "Generated post failed quality checks", issues: validationIssues },
+      { status: 500 },
+    );
+  }
+
   // Sanitise slug — lowercase alphanumeric + hyphens only
   postData.slug = postData.slug
     .toLowerCase()
@@ -241,7 +284,17 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
     .replace(/^-|-$/g, "");
 
   // 6. Save to Supabase — published=true but published_at is 24h in the future
-  const supabase = createServiceClient();
+  // Guard against slug collision — append YYYY-MM-DD suffix if slug already exists
+  const { data: existingSlug } = await supabase
+    .from("blog_posts")
+    .select("slug")
+    .eq("slug", postData.slug)
+    .maybeSingle();
+
+  if (existingSlug) {
+    postData.slug = `${postData.slug}-${new Date().toISOString().slice(0, 10)}`;
+  }
+
   const publishAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   const { data: saved, error: dbError } = await supabase
