@@ -21,7 +21,7 @@ create table if not exists public.leads (
 -- RLS: only service role can read/insert
 alter table public.leads enable row level security;
 
-create policy "Service role full access on leads"
+create policy if not exists "Service role full access on leads"
   on public.leads
   for all
   to service_role
@@ -46,14 +46,14 @@ create table if not exists public.case_studies (
 alter table public.case_studies enable row level security;
 
 -- Public read (published case studies visible to all)
-create policy "Public read case_studies"
+create policy if not exists "Public read case_studies"
   on public.case_studies
   for select
   to anon, authenticated
   using (true);
 
 -- Service role full access
-create policy "Service role full access on case_studies"
+create policy if not exists "Service role full access on case_studies"
   on public.case_studies
   for all
   to service_role
@@ -88,14 +88,14 @@ alter table public.blog_posts add column if not exists ai_generated boolean not 
 alter table public.blog_posts enable row level security;
 
 -- Public can only read published posts
-create policy "Public read published blog_posts"
+create policy if not exists "Public read published blog_posts"
   on public.blog_posts
   for select
   to anon, authenticated
   using (published = true);
 
 -- Service role full access
-create policy "Service role full access on blog_posts"
+create policy if not exists "Service role full access on blog_posts"
   on public.blog_posts
   for all
   to service_role
@@ -127,7 +127,7 @@ create table if not exists public.blog_generations (
 alter table public.blog_generations enable row level security;
 
 -- Service role only — never exposed to anon/authenticated users
-create policy "Service role full access on blog_generations"
+create policy if not exists "Service role full access on blog_generations"
   on public.blog_generations
   for all
   to service_role
