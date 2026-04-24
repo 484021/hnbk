@@ -15,6 +15,14 @@ type Post = {
   created_at: string;
 };
 
+type Generation = {
+  id: string;
+  topic: string;
+  status: string;
+  created_at: string;
+  post_id: string | null;
+};
+
 function postStatus(post: Post): { label: string; className: string } {
   if (!post.published) return { label: "Draft", className: "bg-gray-700 text-gray-300" };
   const now = new Date();
@@ -28,11 +36,25 @@ function postStatus(post: Post): { label: string; className: string } {
   return { label: "Live", className: "bg-emerald-900/60 text-emerald-300" };
 }
 
-export default function AdminDashboard({ initialPosts }: { initialPosts: Post[] }) {
+function genStatusBadge(status: string): { label: string; className: string } {
+  if (status === "complete") return { label: "Complete", className: "bg-emerald-900/60 text-emerald-300" };
+  if (status === "failed") return { label: "Failed", className: "bg-red-900/60 text-red-300" };
+  return { label: "In Progress", className: "bg-amber-900/60 text-amber-300" };
+}
+
+export default function AdminDashboard({
+  initialPosts,
+  initialGenerations = [],
+}: {
+  initialPosts: Post[];
+  initialGenerations?: Generation[];
+}) {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [generations, setGenerations] = useState<Generation[]>(initialGenerations);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [retryGen, setRetryGen] = useState<{ id: string; topic: string } | null>(null);
 
   async function publishNow(slug: string) {
     setBusy(slug);
@@ -104,7 +126,22 @@ export default function AdminDashboard({ initialPosts }: { initialPosts: Post[] 
       </header>
 
       <main className="max-w-5xl mx-auto p-6">
-        <BlogGenerator onPostCreated={(post) => setPosts((prev) => [post, ...prev])} />
+        {/* New generation (normal or retry mode) */}
+        <BlogGenerator
+          key={retryGen?.id ?? "default"}
+          onPostCreated={(post) => {
+            setPosts((prev) => [post, ...prev]);
+            if (retryGen) {
+              // Update generation status in local state
+              setGenerations((prev) =>
+                prev.map((g) => (g.id === retryGen.id ? { ...g, status: "complete", post_id: post.id } : g)),
+              );
+              setRetryGen(null);
+            }
+          }}
+          initialGenerationId={retryGen?.id}
+          initialTopic={retryGen?.topic}
+        />
 
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-gray-800 text-gray-200 text-sm">
@@ -180,6 +217,64 @@ export default function AdminDashboard({ initialPosts }: { initialPosts: Post[] 
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* ── Generation History ──────────────────────────────────────────── */}
+        {generations.length > 0 && (
+          <div className="mt-10">
+            <h2 className="text-white font-semibold text-sm mb-3">Generation History</h2>
+            <div className="overflow-x-auto rounded-xl border border-gray-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-800 bg-gray-900">
+                    <th className="text-left text-gray-400 font-medium px-4 py-3">Topic</th>
+                    <th className="text-left text-gray-400 font-medium px-4 py-3">Status</th>
+                    <th className="text-left text-gray-400 font-medium px-4 py-3 hidden sm:table-cell">Created</th>
+                    <th className="text-right text-gray-400 font-medium px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {generations.map((gen) => {
+                    const badge = genStatusBadge(gen.status);
+                    const canRetry = gen.status === "failed" || gen.status === "in_progress";
+                    const isRetrying = retryGen?.id === gen.id;
+                    return (
+                      <tr key={gen.id} className="border-b border-gray-800/60 hover:bg-gray-900/40 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="text-white truncate max-w-xs">{gen.topic}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
+                          {new Date(gen.created_at).toLocaleDateString("en-CA")}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {canRetry && (
+                            <button
+                              onClick={() => {
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                                setRetryGen({ id: gen.id, topic: gen.topic });
+                              }}
+                              disabled={isRetrying}
+                              className="text-xs px-2.5 py-1 rounded bg-violet-800/60 hover:bg-violet-700/60 text-violet-200 disabled:opacity-50 transition-colors whitespace-nowrap"
+                            >
+                              {isRetrying ? "Retrying…" : "Retry write"}
+                            </button>
+                          )}
+                          {gen.status === "complete" && gen.post_id && (
+                            <span className="text-xs text-gray-500">Published</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>

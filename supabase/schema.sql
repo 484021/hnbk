@@ -108,3 +108,31 @@ create index if not exists case_studies_slug_idx        on public.case_studies (
 create index if not exists blog_posts_slug_idx          on public.blog_posts (slug);
 create index if not exists blog_posts_published_idx     on public.blog_posts (published, created_at desc);
 create index if not exists blog_posts_published_at_idx  on public.blog_posts (published_at desc);
+
+-- ─── Blog Generations ─────────────────────────────────────────
+-- Stores each pipeline run: topic, research, raw write output, and final post link.
+-- Allows retry-from-research if the write step fails, and provides a full audit trail.
+create table if not exists public.blog_generations (
+  id                uuid primary key default uuid_generate_v4(),
+  created_at        timestamptz not null default now(),
+  topic             text not null,
+  research_broad    text,                          -- raw research from researchBroad()
+  research_local    text,                          -- raw research from researchLocal()
+  raw_write_output  text,                          -- raw Gemini JSON string before parsing
+  post_id           uuid references public.blog_posts(id) on delete set null,
+  status            text not null default 'in_progress', -- in_progress | complete | failed
+  error_details     text
+);
+
+alter table public.blog_generations enable row level security;
+
+-- Service role only — never exposed to anon/authenticated users
+create policy "Service role full access on blog_generations"
+  on public.blog_generations
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+create index if not exists blog_generations_created_at_idx on public.blog_generations (created_at desc);
+create index if not exists blog_generations_status_idx     on public.blog_generations (status);

@@ -35,8 +35,37 @@ export async function geminiGenerate(
     throw new Error(`Gemini API ${res.status}: ${err.slice(0, 400)}`);
   }
 
-  const data = await res.json();
-  return (data.candidates?.[0]?.content?.parts?.[0]?.text as string) ?? "";
+  const data = await res.json() as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      groundingMetadata?: {
+        groundingChunks?: Array<{ web?: { uri?: string; title?: string } }>;
+      };
+    }>;
+  };
+
+  const candidate = data.candidates?.[0];
+  const text = (candidate?.content?.parts?.[0]?.text ?? "") as string;
+
+  // Extract verified source URLs from grounding metadata (search-enabled steps only).
+  // These are the actual pages Gemini searched — pass them to the write step so it
+  // can cite real URLs instead of fabricating them.
+  if (useSearch) {
+    const chunks = candidate?.groundingMetadata?.groundingChunks ?? [];
+    const urlLines = chunks
+      .filter((c) => c.web?.uri)
+      .map((c) => `- [${c.web!.title ?? c.web!.uri!}](${c.web!.uri!})`)
+      .filter((line, i, arr) => arr.indexOf(line) === i); // deduplicate
+    if (urlLines.length > 0) {
+      return (
+        text +
+        "\n\nVERIFIED SOURCE URLS (from Google Search grounding — use these exact URLs in the Sources section, do not invent others):\n" +
+        urlLines.join("\n")
+      );
+    }
+  }
+
+  return text;
 }
 
 // ─── Topic selection ─────────────────────────────────────────────────────────
@@ -156,8 +185,8 @@ Return as plain text with clear section headers. Be specific — include numbers
 export type ExistingPost = { slug: string; title: string };
 
 // Max research words passed to the write step.
-// Keeps total prompt tokens low so Gemini completes well under 60s.
-const RESEARCH_MAX_WORDS = 600;
+// Keeps prompt tokens manageable; 1500×2 = 3000 words total context for the writer.
+const RESEARCH_MAX_WORDS = 1500;
 
 function truncateWords(text: string, maxWords: number): string {
   const words = text.split(/\s+/);
@@ -289,7 +318,7 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
 }`,
     false,  // no search grounding — research is already in the prompt context
     true,   // jsonMode: forces Gemini to return a valid JSON string
-    "gemini-2.5-flash",
+    "gemini-2.5-pro",  // highest quality model — lowest hallucination rate
   );
 }
 
@@ -401,7 +430,7 @@ Return this exact JSON shape:
 }`,
     false,  // no search grounding — JSON mode is incompatible with grounding
     true,   // jsonMode: forces valid JSON output
-    "gemini-2.5-flash",
+    "gemini-2.5-pro",  // highest quality model — lowest hallucination rate
   );
 }
 

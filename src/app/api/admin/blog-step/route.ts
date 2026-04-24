@@ -16,7 +16,7 @@ import {
 // Each step is a single Gemini call — comfortably under 60s on Vercel Hobby
 export const maxDuration = 60;
 
-type StepName = "topic" | "research_broad" | "research_local" | "write" | "save";
+type StepName = "topic" | "research_broad" | "research_local" | "write" | "save" | "retry_write";
 
 type StepRequest = {
   step: StepName;
@@ -24,6 +24,7 @@ type StepRequest = {
   researchBroadText?: string;
   researchLocalText?: string;
   rawText?: string;
+  generationId?: string;
 };
 
 // ─── POST /api/admin/blog-step ───────────────────────────────────────────────
@@ -57,34 +58,48 @@ export async function POST(req: NextRequest) {
 
   // ── Step: topic ─────────────────────────────────────────────────────────────
   if (step === "topic") {
-    // If the client already provided a topic, echo it back immediately
-    if (body.topic?.trim()) {
-      return NextResponse.json({ topic: body.topic.trim() });
-    }
-
     const supabase = createServiceClient();
-    let recentTitles: string[] = [];
-    try {
-      const { data: recentPosts } = await supabase
-        .from("blog_posts")
-        .select("title")
-        .order("created_at", { ascending: false })
-        .limit(30);
-      recentTitles = (recentPosts ?? []).map((p: { title: string }) => p.title);
-    } catch {
-      // proceed without deduplication
+    let topic: string;
+
+    if (body.topic?.trim()) {
+      topic = body.topic.trim();
+    } else {
+      let recentTitles: string[] = [];
+      try {
+        const { data: recentPosts } = await supabase
+          .from("blog_posts")
+          .select("title")
+          .order("created_at", { ascending: false })
+          .limit(30);
+        recentTitles = (recentPosts ?? []).map((p: { title: string }) => p.title);
+      } catch {
+        // proceed without deduplication
+      }
+
+      try {
+        topic = await selectTopic(apiKey, recentTitles);
+      } catch (err) {
+        return NextResponse.json(
+          { error: "Topic generation failed", details: String(err) },
+          { status: 502 },
+        );
+      }
     }
 
-    let topic: string;
+    // Persist generation row — non-fatal if it fails
+    let generationId: string | null = null;
     try {
-      topic = await selectTopic(apiKey, recentTitles);
-    } catch (err) {
-      return NextResponse.json(
-        { error: "Topic generation failed", details: String(err) },
-        { status: 502 },
-      );
+      const { data: gen } = await supabase
+        .from("blog_generations")
+        .insert({ topic, status: "in_progress" })
+        .select("id")
+        .single();
+      generationId = gen?.id ?? null;
+    } catch {
+      // tracking is best-effort — pipeline still runs without it
     }
-    return NextResponse.json({ topic });
+
+    return NextResponse.json({ topic, generationId });
   }
 
   // ── Step: research_broad ────────────────────────────────────────────────────
@@ -100,6 +115,15 @@ export async function POST(req: NextRequest) {
         { error: "Broad research failed", details: String(err) },
         { status: 502 },
       );
+    }
+    if (body.generationId) {
+      try {
+        const supabase = createServiceClient();
+        await supabase
+          .from("blog_generations")
+          .update({ research_broad: text })
+          .eq("id", body.generationId);
+      } catch { /* non-fatal */ }
     }
     const wordCount = text.split(/\s+/).filter(Boolean).length;
     return NextResponse.json({ researchBroadText: text, wordCount });
@@ -118,6 +142,15 @@ export async function POST(req: NextRequest) {
         { error: "Local research failed", details: String(err) },
         { status: 502 },
       );
+    }
+    if (body.generationId) {
+      try {
+        const supabase = createServiceClient();
+        await supabase
+          .from("blog_generations")
+          .update({ research_local: localText })
+          .eq("id", body.generationId);
+      } catch { /* non-fatal */ }
     }
     const localWordCount = localText.split(/\s+/).filter(Boolean).length;
     return NextResponse.json({ researchLocalText: localText, wordCount: localWordCount });
@@ -154,6 +187,15 @@ export async function POST(req: NextRequest) {
         existingPosts,
       );
     } catch (err) {
+      if (body.generationId) {
+        try {
+          const supabase = createServiceClient();
+          await supabase
+            .from("blog_generations")
+            .update({ status: "failed", error_details: String(err) })
+            .eq("id", body.generationId);
+        } catch { /* non-fatal */ }
+      }
       return NextResponse.json(
         { error: "Article generation failed", details: String(err) },
         { status: 502 },
@@ -205,6 +247,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (body.generationId) {
+      try {
+        const supabase = createServiceClient();
+        await supabase
+          .from("blog_generations")
+          .update({ raw_write_output: rawText })
+          .eq("id", body.generationId);
+      } catch { /* non-fatal */ }
+    }
+
     return NextResponse.json({ postData, wordCount, rawText });
   }
 
@@ -252,10 +304,27 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (dbError || !saved) {
+      if (body.generationId) {
+        try {
+          await supabase
+            .from("blog_generations")
+            .update({ status: "failed", error_details: dbError?.message ?? "Insert failed" })
+            .eq("id", body.generationId);
+        } catch { /* non-fatal */ }
+      }
       return NextResponse.json(
         { error: "Database insert failed", details: dbError?.message },
         { status: 500 },
       );
+    }
+
+    if (body.generationId) {
+      try {
+        await supabase
+          .from("blog_generations")
+          .update({ post_id: saved.id, status: "complete" })
+          .eq("id", body.generationId);
+      } catch { /* non-fatal */ }
     }
 
     // Email notification — non-fatal
@@ -299,6 +368,127 @@ export async function POST(req: NextRequest) {
       },
       url: `/blog/${saved.slug}`,
     });
+  }
+
+  // ── Step: retry_write ────────────────────────────────────────────────────────
+  // Loads research from DB by generationId — no need to re-send large text over the wire.
+  // Returns same shape as write step so the client can proceed to save unchanged.
+  if (step === "retry_write") {
+    if (!body.generationId) {
+      return NextResponse.json({ error: "Missing generationId" }, { status: 400 });
+    }
+
+    const supabase = createServiceClient();
+
+    // Load stored research
+    const { data: gen, error: genError } = await supabase
+      .from("blog_generations")
+      .select("topic, research_broad, research_local")
+      .eq("id", body.generationId)
+      .single();
+
+    if (genError || !gen) {
+      return NextResponse.json({ error: "Generation not found" }, { status: 404 });
+    }
+
+    // Reset to in_progress
+    try {
+      await supabase
+        .from("blog_generations")
+        .update({ status: "in_progress", error_details: null })
+        .eq("id", body.generationId);
+    } catch { /* non-fatal */ }
+
+    // Fetch existing posts for internal linking
+    let existingPostsRetry: { slug: string; title: string }[] = [];
+    try {
+      const { data: postRows } = await supabase
+        .from("blog_posts")
+        .select("slug, title")
+        .eq("published", true)
+        .order("published_at", { ascending: false })
+        .limit(20);
+      existingPostsRetry = postRows ?? [];
+    } catch { /* proceed without */ }
+
+    let rawText: string;
+    try {
+      rawText = await writeArticle(
+        apiKey,
+        gen.topic,
+        gen.research_broad ?? "",
+        gen.research_local ?? "",
+        existingPostsRetry,
+      );
+    } catch (err) {
+      try {
+        await supabase
+          .from("blog_generations")
+          .update({ status: "failed", error_details: String(err) })
+          .eq("id", body.generationId);
+      } catch { /* non-fatal */ }
+      return NextResponse.json(
+        { error: "Article generation failed", details: String(err) },
+        { status: 502 },
+      );
+    }
+
+    let postData;
+    try {
+      postData = parsePostData(rawText);
+    } catch {
+      let retryRaw: string;
+      try {
+        retryRaw = await retryWriteAsJson(
+          apiKey,
+          gen.topic,
+          gen.research_broad ?? "",
+          gen.research_local ?? "",
+          existingPostsRetry,
+        );
+      } catch (retryErr) {
+        try {
+          await supabase
+            .from("blog_generations")
+            .update({ status: "failed", error_details: String(retryErr) })
+            .eq("id", body.generationId);
+        } catch { /* non-fatal */ }
+        return NextResponse.json(
+          { error: "Article generation failed on retry", details: String(retryErr) },
+          { status: 502 },
+        );
+      }
+      try {
+        postData = parsePostData(retryRaw);
+        rawText = retryRaw;
+      } catch {
+        return NextResponse.json(
+          { error: "Failed to parse Gemini response as JSON after retry" },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (!postData.title || !postData.content || !postData.slug) {
+      return NextResponse.json(
+        { error: "Gemini response missing required fields (title/slug/content)" },
+        { status: 500 },
+      );
+    }
+
+    const { valid, issues, wordCount } = validatePost(postData);
+    if (!valid) {
+      return NextResponse.json({ error: "Quality checks failed", issues }, { status: 422 });
+    }
+
+    try {
+      await supabase
+        .from("blog_generations")
+        .update({ raw_write_output: rawText })
+        .eq("id", body.generationId);
+    } catch { /* non-fatal */ }
+
+    return NextResponse.json({ postData, wordCount, rawText, topic: gen.topic });
   }
 
   return NextResponse.json({ error: `Unknown step: ${step}` }, { status: 400 });

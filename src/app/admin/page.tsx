@@ -23,5 +23,11 @@ export default async function AdminPage() {
     .select("id, slug, title, published, published_at, ai_generated, created_at")
     .order("created_at", { ascending: false });
 
-  return <AdminDashboard initialPosts={data ?? []} />;
+  const { data: generationsData } = await supabase
+    .from("blog_generations")
+    .select("id, topic, status, created_at, post_id")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  return <AdminDashboard initialPosts={data ?? []} initialGenerations={generationsData ?? []} />;
 }

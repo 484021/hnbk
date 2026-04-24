@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type StepStatus = "pending" | "running" | "done" | "error";
@@ -33,8 +33,12 @@ const INITIAL_STEPS: Step[] = [
 
 export default function BlogGenerator({
   onPostCreated,
+  initialGenerationId,
+  initialTopic,
 }: {
   onPostCreated?: (post: PostRecord) => void;
+  initialGenerationId?: string;
+  initialTopic?: string;
 }) {
   const router = useRouter();
   const [topicInput, setTopicInput] = useState("");
@@ -43,9 +47,18 @@ export default function BlogGenerator({
   const [result, setResult] = useState<{ slug: string; title: string; url: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [elapsed, setElapsed] = useState(0);
+  const [generationId, setGenerationId] = useState<string | null>(initialGenerationId ?? null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
+
+  // Auto-start retry when mounted with an initialGenerationId (from Generation History)
+  useEffect(() => {
+    if (initialGenerationId) {
+      void retryWrite();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function resetState() {
     setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: "pending" as StepStatus, detail: undefined })));
@@ -111,6 +124,7 @@ export default function BlogGenerator({
 
   async function generate() {
     resetState();
+    setGenerationId(null);
     setGenerating(true);
     startTimeRef.current = Date.now();
     timerRef.current = setInterval(() => {
@@ -120,9 +134,10 @@ export default function BlogGenerator({
     try {
       // 1. Topic
       markRunning("topic");
-      const { topic } = await callStep<{ topic: string }>("topic", {
+      const { topic, generationId: genId } = await callStep<{ topic: string; generationId: string | null }>("topic", {
         topic: topicInput.trim() || undefined,
       });
+      if (genId) setGenerationId(genId);
       markDone("topic", topic);
 
       // 2. Broad research
@@ -130,7 +145,7 @@ export default function BlogGenerator({
       const { researchBroadText, wordCount: broadWords } = await callStep<{
         researchBroadText: string;
         wordCount: number;
-      }>("research_broad", { topic });
+      }>("research_broad", { topic, generationId: genId ?? undefined });
       markDone(
         "research_broad",
         broadWords === 0
@@ -143,25 +158,25 @@ export default function BlogGenerator({
       const { researchLocalText, wordCount: localWords } = await callStep<{
         researchLocalText: string;
         wordCount: number;
-      }>("research_local", { topic });
+      }>("research_local", { topic, generationId: genId ?? undefined });
       markDone("research_local", `${localWords.toLocaleString()} words of local data gathered`);
 
-      // 4. Write + validate (validate happens inside the write step)
+      // 4. Write
       markRunning("write");
       const { postData, wordCount, rawText } = await callStep<{
         postData: { title: string };
         wordCount: number;
         rawText: string;
-      }>("write", { topic, researchBroadText, researchLocalText });
+      }>("write", { topic, researchBroadText, researchLocalText, generationId: genId ?? undefined });
       markDone("write", `${wordCount.toLocaleString()} words - "${postData.title}"`);
 
-      // 5. Validate (done inside write step - mark as done immediately)
+      // 5. Validate (done inside write step)
       markRunning("validate");
       markDone("validate", `Geo tag confirmed  ${wordCount.toLocaleString()} words`);
 
       // 6. Save
       markRunning("save");
-      const { post, url } = await callStep<{ post: PostRecord; url: string }>("save", { rawText });
+      const { post, url } = await callStep<{ post: PostRecord; url: string }>("save", { rawText, generationId: genId ?? undefined });
       markDone("save", url);
 
       setResult({ slug: post.slug, title: post.title, url });
@@ -171,6 +186,74 @@ export default function BlogGenerator({
       setErrorMsg(message);
       setSteps((prev) =>
         prev.map((s) => (s.status === "running" ? { ...s, status: "error" } : s)),
+      );
+    } finally {
+      setGenerating(false);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  }
+
+  // Retry just the write + save steps using research already stored in DB.
+  // Used both by the inline "Retry write" button and the Generation History panel.
+  async function retryWrite() {
+    const gId = generationId ?? initialGenerationId;
+    if (!gId) return;
+
+    // Reset only write/validate/save — leave topic/research steps as-is
+    setSteps((prev) =>
+      prev.map((s) => {
+        if (["topic", "research_broad", "research_local"].includes(s.id)) {
+          // Mark pre-steps as done if they were pending (history retry mode)
+          if (s.status === "pending") {
+            return {
+              ...s, status: "done" as StepStatus,
+              detail: s.id === "topic" ? (initialTopic ?? "From history") : "Loaded from database",
+            };
+          }
+          return s;
+        }
+        return { ...s, status: "pending" as StepStatus, detail: undefined };
+      }),
+    );
+    setResult(null);
+    setErrorMsg("");
+    setElapsed(0);
+    setGenerating(true);
+    startTimeRef.current = Date.now();
+    timerRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+
+    try {
+      // Write (loads research from DB server-side)
+      markRunning("write");
+      const { postData, wordCount, rawText } = await callStep<{
+        postData: { title: string };
+        wordCount: number;
+        rawText: string;
+      }>("retry_write", { generationId: gId });
+      markDone("write", `${wordCount.toLocaleString()} words - "${postData.title}"`);
+
+      markRunning("validate");
+      markDone("validate", `${wordCount.toLocaleString()} words`);
+
+      markRunning("save");
+      const { post, url } = await callStep<{ post: PostRecord; url: string }>("save", {
+        rawText,
+        generationId: gId,
+      });
+      markDone("save", url);
+
+      setResult({ slug: post.slug, title: post.title, url });
+      onPostCreated?.(post);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error - please try again";
+      setErrorMsg(message);
+      setSteps((prev) =>
+        prev.map((s) => (s.status === "running" ? { ...s, status: "error" as StepStatus } : s)),
       );
     } finally {
       setGenerating(false);
@@ -299,6 +382,16 @@ export default function BlogGenerator({
             className="mt-4 px-3 py-2.5 rounded-lg bg-red-900/30 border border-red-800/50 text-sm text-red-300"
           >
             {errorMsg}
+            {(generationId ?? initialGenerationId) && (
+              <button
+                type="button"
+                onClick={() => void retryWrite()}
+                disabled={generating}
+                className="mt-2 block text-xs px-3 py-1.5 rounded bg-violet-800/60 hover:bg-violet-700/60 text-violet-200 transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              >
+                Retry write step
+              </button>
+            )}
           </div>
         )}
 
