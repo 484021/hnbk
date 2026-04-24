@@ -7,12 +7,17 @@ export async function geminiGenerate(
   apiKey: string,
   prompt: string,
   useSearch = false,
+  jsonMode = false,
 ): Promise<string> {
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
   };
   if (useSearch) {
     body.tools = [{ google_search: {} }];
+  }
+  // jsonMode forces the model to return a valid JSON string (incompatible with search grounding)
+  if (jsonMode && !useSearch) {
+    body.generationConfig = { responseMimeType: "application/json" };
   }
 
   const res = await fetch(
@@ -246,7 +251,8 @@ CRITICAL: Return ONLY a raw JSON object. No markdown code fences. No text before
   "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
   "content": "full HTML using only allowed tags"
 }`,
-    true,
+    false,  // no search grounding — research is already in the prompt context
+    true,   // jsonMode: forces Gemini to return a valid JSON string
   );
 }
 
@@ -346,7 +352,8 @@ Return this exact JSON shape:
   "tags": ["GTA or Toronto or Ontario", "Industry tag", "Topic tag"],
   "content": "full HTML using only h2 h3 p ul li strong blockquote hr tags, 1400-1800 words, NO Hook heading, open directly with <p>"
 }`,
-    true,
+    false,  // no search grounding — JSON mode is incompatible with grounding
+    true,   // jsonMode: forces valid JSON output
   );
 }
 
