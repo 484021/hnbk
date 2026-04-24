@@ -3,9 +3,6 @@ import { createServiceClient } from "@/lib/supabase";
 import { Resend } from "resend";
 import crypto from "crypto";
 
-// Allow up to 2 minutes — 4 Gemini API calls can take 60–90s total
-export const maxDuration = 120;
-
 // ─── Gemini REST helper ──────────────────────────────────────────────────────
 async function geminiGenerate(
   apiKey: string,
@@ -154,25 +151,28 @@ Respond with ONLY the topic title. No explanation, no punctuation at the end.`,
 
 Research topic: "${topic}"
 
-Using Google Search, find and return the following — focus on 2025–2026 data:
+TIME WINDOW: Focus ONLY on information published in the last 1–3 months (January–April 2026). Ignore older data unless no recent data exists.
 
-1. STATISTICS (find 6–10 specific data points):
-   - Include the exact number, what it measures, the source name, and the year
-   - Example: "67% of Canadian SMBs report labour as their #1 cost (CFIB, 2025)"
+Using Google Search, find and return the following:
+
+1. STATISTICS (find 6–10 specific data points from the last 1–3 months):
+   - Include the exact number, what it measures, the source name, and the publication date
+   - Example: "67% of Canadian SMBs report labour as their #1 cost (CFIB, March 2026)"
    - Prioritise Canadian/Ontario data; use US/global only if Canadian not available
+   - Flag any stat older than 3 months with "[older data]"
 
-2. RECENT NEWS & TRENDS (find 4–6 items from the last 6 months):
-   - Brief headline + key fact from each
-   - Focus on what is changing or accelerating right now
+2. BREAKING NEWS & TRENDS (find 4–6 items from the last 1–3 months only):
+   - Brief headline + publication date + key fact from each
+   - Focus on what has changed or been announced recently — not evergreen background info
 
-3. INDUSTRY CONTEXT:
-   - Current state of this industry/problem in Canada in 2026
-   - Any major shifts, disruptions, or adoption patterns
+3. CURRENT INDUSTRY CONTEXT (as of early 2026):
+   - What is happening in this industry RIGHT NOW in Canada
+   - Any announcements, policy changes, or market shifts from Jan–Apr 2026
 
-4. EXPERT OPINIONS OR QUOTES (if findable):
-   - Name, title, organisation, and the key insight
+4. RECENT EXPERT OPINIONS OR QUOTES (last 3 months if findable):
+   - Name, title, organisation, date, and the key insight
 
-Return as plain text with clear section headers. Be specific and factual — no fluff.`,
+Return as plain text with clear section headers. Be specific, include dates — no fluff.`,
       true, // Google Search grounding
     );
   } catch {
@@ -188,23 +188,26 @@ Return as plain text with clear section headers. Be specific and factual — no 
 
 Research topic: "${topic}"
 
-Using Google Search, find GTA and Ontario-specific information from 2024–2026:
+TIME WINDOW: Focus ONLY on information from the last 1–3 months (January–April 2026). For regulations, include any changes announced since January 2025.
+
+Using Google Search, find GTA and Ontario-specific information:
 
 1. ONTARIO REGULATIONS & PROGRAMS relevant to this topic:
    - WSIB, OHSA, ESA, Ministry of Labour, CRA, HST rules, Ontario grants
-   - Any recent regulatory changes (2024–2026)
+   - Any regulatory changes or announcements from Jan 2025–Apr 2026 (include effective dates)
 
-2. GTA MARKET DATA:
+2. GTA MARKET DATA (most recent available, ideally Jan–Apr 2026):
    - Local statistics, adoption rates, or costs specific to Ontario/GTA businesses
    - Compare to national averages if available
 
-3. LOCAL NEWS & CASE STUDIES:
-   - Ontario or GTA businesses doing something notable in this area
-   - Local industry associations (e.g. BILD, OREA, ORA, OBAA) reports or statements
+3. LOCAL NEWS & CASE STUDIES (last 1–3 months preferred):
+   - Ontario or GTA businesses doing something notable in this area recently
+   - Local industry associations (e.g. BILD, OREA, ORA, OBAA) reports or statements from Jan–Apr 2026
+   - Include publication dates for each item
 
-4. ONTARIO ECONOMIC CONTEXT:
-   - Labour market, minimum wage ($17.20/hr as of Oct 2024), cost-of-living pressures
-   - Any GTA-specific business challenges relevant to this topic
+4. ONTARIO ECONOMIC CONTEXT (most recent data available):
+   - Labour market conditions in early 2026, minimum wage ($17.20/hr as of Oct 2024)
+   - Any GTA-specific business challenges or cost pressures reported in the last 3 months
 
 Return as plain text with clear section headers. Be specific — include numbers, dates, and sources.`,
       true, // Google Search grounding
