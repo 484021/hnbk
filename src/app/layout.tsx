@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ConditionalLayout from "@/components/layout/ConditionalLayout";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -95,6 +96,7 @@ export default function RootLayout({
       <body className="bg-bg-base text-text-primary flex flex-col min-h-screen">
         <ConditionalLayout>{children}</ConditionalLayout>
       </body>
+      <GoogleAnalytics gaId="G-Y3Y1HDC9Q5" />
     </html>
   );
 }

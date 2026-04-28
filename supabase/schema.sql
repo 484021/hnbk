@@ -114,6 +114,30 @@ create index if not exists blog_posts_slug_idx          on public.blog_posts (sl
 create index if not exists blog_posts_published_idx     on public.blog_posts (published, created_at desc);
 create index if not exists blog_posts_published_at_idx  on public.blog_posts (published_at desc);
 
+-- ─── Demo Leads ───────────────────────────────────────────────
+-- Captures name + email from the Instagram pipeline live demo (lead gate).
+create table if not exists public.demo_leads (
+  id          uuid primary key default uuid_generate_v4(),
+  name        text not null,
+  email       text not null,
+  topic       text not null,
+  demo        text not null default 'instagram-pipeline',
+  created_at  timestamptz not null default now()
+);
+
+alter table public.demo_leads enable row level security;
+
+drop policy if exists "Service role full access on demo_leads" on public.demo_leads;
+create policy "Service role full access on demo_leads"
+  on public.demo_leads
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+create index if not exists demo_leads_email_idx      on public.demo_leads (email, created_at desc);
+create index if not exists demo_leads_created_at_idx on public.demo_leads (created_at desc);
+
 -- ─── Blog Generations ─────────────────────────────────────────
 -- Stores each pipeline run: topic, research, raw write output, and final post link.
 -- Allows retry-from-research if the write step fails, and provides a full audit trail.
