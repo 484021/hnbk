@@ -7,7 +7,7 @@ import Button from "@/components/ui/Button";
 import { ArrowLeft, Calendar, User } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ slug: string } & Record<string, string>> };
 
 type Post = {
   slug: string;

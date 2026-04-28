@@ -1,12 +1,13 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { List, X } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 const navLinks = [
   { href: "/services", label: "Services" },
@@ -15,6 +16,12 @@ const navLinks = [
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Blog" },
 ];
+
+const mobileMenuVariants = {
+  hidden: { opacity: 0, scale: 0.97, y: -8 },
+  visible: { opacity: 1, scale: 1, y: 0 },
+  exit: { opacity: 0, scale: 0.97, y: -8 },
+};
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,7 +56,7 @@ export default function Navbar() {
         className={cn(
           "flex items-center justify-between px-5 py-3 transition-[background-color,border-color,border-radius,box-shadow] duration-500",
           scrolled
-            ? "bg-[rgba(17,17,17,0.92)] backdrop-blur-2xl border-b border-white/8 shadow-[0_1px_0_0_rgba(255,255,255,0.04)]"
+            ? "bg-bg-card/92 backdrop-blur-2xl border-b border-white/8 shadow-[0_1px_0_0_rgba(255,255,255,0.04)]"
             : "glass rounded-2xl",
         )}
       >
@@ -83,11 +90,9 @@ export default function Navbar() {
                   )}
                 >
                   {link.label}
-                  {/* Active indicator dot */}
                   {isActive && (
                     <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-brand-purple" />
                   )}
-                  {/* Hover underline (inactive only) */}
                   {!isActive && (
                     <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-0 h-px bg-white/30 rounded-full group-hover:w-4 transition-[width] duration-200" />
                   )}
@@ -97,8 +102,9 @@ export default function Navbar() {
           })}
         </ul>
 
-        {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Desktop CTA + ThemeToggle */}
+        <div className="hidden md:flex items-center gap-2">
+          <ThemeToggle />
           <Link
             href="/contact"
             className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-text-primary border border-white/15 rounded-full hover:bg-white/5 hover:border-white/25 transition-[background-color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
@@ -115,7 +121,7 @@ export default function Navbar() {
           aria-expanded={isOpen}
           aria-controls="mobile-nav-menu"
         >
-          {isOpen ? <X size={22} /> : <Menu size={22} />}
+          {isOpen ? <X size={22} weight="bold" /> : <List size={22} weight="regular" />}
         </button>
       </nav>
 
@@ -123,14 +129,15 @@ export default function Navbar() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={prefersReduced ? false : { opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={prefersReduced ? {} : { opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
+            variants={prefersReduced ? undefined : mobileMenuVariants}
+            initial={prefersReduced ? false : "hidden"}
+            animate="visible"
+            exit={prefersReduced ? undefined : "exit"}
+            transition={{ type: "spring", stiffness: 300, damping: 24 }}
             id="mobile-nav-menu"
             role="navigation"
             aria-label="Mobile navigation"
-            className="mt-2 rounded-2xl p-5 flex flex-col gap-1 bg-[rgba(17,17,17,0.95)] backdrop-blur-2xl border border-white/8"
+            className="mt-2 rounded-2xl p-5 flex flex-col gap-1 bg-bg-card/95 backdrop-blur-2xl border border-white/8"
           >
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -154,11 +161,12 @@ export default function Navbar() {
                 </Link>
               );
             })}
-            <div className="pt-2 mt-1 border-t border-white/8">
+            <div className="pt-2 mt-1 border-t border-white/8 flex items-center gap-2">
+              <ThemeToggle />
               <Link
                 href="/contact"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-medium text-text-primary border border-white/15 rounded-full hover:bg-white/5 hover:border-white/25 transition-[background-color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple"
+                className="flex-1 flex items-center justify-center px-4 py-2.5 text-sm font-medium text-text-primary border border-white/15 rounded-full hover:bg-white/5 hover:border-white/25 transition-[background-color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple"
               >
                 Book a Call
               </Link>

@@ -10,7 +10,7 @@ export const metadata = { robots: { index: false, follow: false } };
 export default async function AdminEditPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string } & Record<string, string>>;
 }) {
   const cookieStore = await cookies();
   const cookieVal = cookieStore.get(ADMIN_COOKIE)?.value ?? "";

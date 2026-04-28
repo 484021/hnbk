@@ -1,10 +1,22 @@
-"use client";
+﻿"use client";
 
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import SectionWrapper from "@/components/ui/SectionWrapper";
 import Badge from "@/components/ui/Badge";
-import { Star } from "lucide-react";
+import { Star } from "@phosphor-icons/react";
+
+const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
+const springFast = { type: "spring", stiffness: 380, damping: 30 } as const;
+
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.25 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: spring },
+};
 
 const testimonials = [
   {
@@ -17,7 +29,7 @@ const testimonials = [
   },
   {
     stars: 5,
-    text: "HNBK provides quality services that help improve our online presence — which is essential in today's market. The optimizations and efficiencies brought upon by their solutions make everything quick and seamless. Highly recommend HNBK for any website and automation needs.",
+    text: "HNBK provides quality services that help improve our online presence â€” which is essential in today's market. The optimizations and efficiencies brought upon by their solutions make everything quick and seamless. Highly recommend HNBK for any website and automation needs.",
     name: "Erwin Ong",
     role: "Senior Marketing Executive",
     initials: "EO",
@@ -38,7 +50,7 @@ export default function TestimonialsSection() {
           <motion.div
             initial={prefersReduced ? false : { opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
+            transition={spring}
             className="flex justify-center mb-4"
           >
             <Badge variant="cyan">Client Results</Badge>
@@ -46,7 +58,7 @@ export default function TestimonialsSection() {
           <motion.h2
             initial={prefersReduced ? false : { opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ ...spring, delay: 0.08 }}
             className="text-4xl sm:text-5xl font-black leading-tight"
           >
             Real businesses,{" "}
@@ -55,28 +67,28 @@ export default function TestimonialsSection() {
         </div>
 
         {/* Testimonial cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-          {testimonials.map((t, i) => (
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto"
+          variants={prefersReduced ? undefined : containerVariants}
+          initial={prefersReduced ? false : "hidden"}
+          animate={inView ? "visible" : "hidden"}
+        >
+          {testimonials.map((t) => (
             <motion.div
               key={t.name}
-              initial={prefersReduced ? false : { opacity: 0, y: 28 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: prefersReduced ? 0 : 0.15 * i + 0.3 }}
+              variants={prefersReduced ? undefined : itemVariants}
+              whileHover={prefersReduced ? {} : { y: -3, transition: springFast }}
               className="bg-bg-elevated border border-white/8 rounded-2xl p-8 flex flex-col gap-6 hover:border-white/16 transition-[border-color] duration-300"
             >
-              {/* Large opening quote */}
               <span className="text-6xl font-black leading-none text-brand-purple/30 -mb-4">&ldquo;</span>
 
-              {/* Stars */}
               <div className="flex gap-1">
                 {Array.from({ length: t.stars }, (_, j) => (
-                  <Star key={`${t.name}-star-${j}`} size={13} className="fill-amber-400 text-amber-400" />
+                  <Star key={`${t.name}-star-${j}`} size={13} weight="fill" className="text-amber-400" />
                 ))}
               </div>
 
-              <p className="text-text-muted leading-relaxed text-sm flex-1">
-                {t.text}
-              </p>
+              <p className="text-text-muted leading-relaxed text-sm flex-1">{t.text}</p>
 
               <div className="flex items-center gap-3 pt-2 border-t border-white/8">
                 <div
@@ -91,7 +103,7 @@ export default function TestimonialsSection() {
               </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </SectionWrapper>
   );

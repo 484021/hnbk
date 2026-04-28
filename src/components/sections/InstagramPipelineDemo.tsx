@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Loader2, RefreshCw, CheckCircle2, Zap } from "lucide-react";
+import { ArrowRight, CircleNotch, ArrowCounterClockwise, CheckCircle, Lightning } from "@phosphor-icons/react";
 import InstagramMockCard from "@/components/ui/InstagramMockCard";
 import Button from "@/components/ui/Button";
 
@@ -168,7 +168,7 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
           <div className="bg-bg-card border border-white/8 rounded-2xl p-7 flex flex-col gap-6">
             <div className="flex items-center gap-3">
               <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-purple/20 border border-brand-purple/30">
-                <Zap size={16} className="text-brand-purple-light" />
+                <Lightning size={16} weight="duotone" className="text-brand-purple-light" />
               </span>
               <div>
                 <p className="text-sm font-semibold text-text-primary">Try the live demo</p>
@@ -296,7 +296,7 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
         <motion.div key="loading" {...fadeIn} className="max-w-lg mx-auto">
           <div className="bg-bg-card border border-white/8 rounded-2xl p-8 flex flex-col gap-6 items-center text-center">
             <div className="flex items-center justify-center w-12 h-12 rounded-full border border-brand-purple/30 bg-brand-purple/10">
-              <Loader2 size={22} className="text-brand-purple-light animate-spin" />
+              <CircleNotch size={22} className="text-brand-purple-light animate-spin" />
             </div>
             <div>
               <p className="text-sm font-semibold text-text-primary mb-1">
@@ -332,10 +332,10 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
                       {step.label}
                     </span>
                     {isActive && (
-                      <Loader2 size={13} className="ml-auto text-brand-purple-light animate-spin shrink-0" />
+                      <CircleNotch size={13} className="ml-auto text-brand-purple-light animate-spin shrink-0" />
                     )}
                     {isDone && (
-                      <CheckCircle2 size={13} className="ml-auto text-green-400 shrink-0" />
+                      <CheckCircle size={13} weight="fill" className="ml-auto text-green-400 shrink-0" />
                     )}
                   </div>
                 );
@@ -350,7 +350,7 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
         <motion.div key="result" {...fadeIn} className="flex flex-col items-center gap-8">
           <div className="flex flex-col items-center gap-2 text-center">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-green-400 bg-green-400/10 border border-green-400/20 rounded-full px-3 py-1">
-              <CheckCircle2 size={12} /> Post generated
+              <CheckCircle size={12} weight="fill" /> Post generated
             </span>
             <p className="text-sm text-text-subtle">
               Generated in real time by the HNBK AI pipeline
@@ -371,7 +371,7 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
               onClick={handleTryAnother}
               className="flex-1 flex items-center justify-center gap-2 border border-white/16 text-text-muted text-sm font-medium rounded-xl px-5 py-3 hover:bg-white/5 hover:text-text-primary transition-[background-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
             >
-              <RefreshCw size={14} /> Try Another Topic
+              <ArrowCounterClockwise size={14} /> Try Another Topic
             </button>
             <Button href="/contact" variant="primary" size="md" className="flex-1 justify-center">
               Build This For Me <ArrowRight size={14} />
@@ -390,7 +390,7 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
               onClick={handleRetry}
               className="flex items-center gap-2 text-sm text-text-muted border border-white/16 rounded-xl px-5 py-2.5 hover:bg-white/5 transition-[background-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
             >
-              <RefreshCw size={14} /> Try Again
+              <ArrowCounterClockwise size={14} /> Try Again
             </button>
           </div>
         </motion.div>

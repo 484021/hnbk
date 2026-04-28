@@ -1,23 +1,35 @@
-"use client";
+﻿"use client";
 
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import SectionWrapper from "@/components/ui/SectionWrapper";
 import Badge from "@/components/ui/Badge";
 
+const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
+const springFast = { type: "spring", stiffness: 380, damping: 30 } as const;
+
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.2 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: spring },
+};
+
 const steps = [
   {
     number: "01",
     title: "Discover",
     description:
-      "We spend time inside your operations — mapping workflows, identifying bottlenecks, and pinpointing the highest-leverage automation opportunities. No assumptions, just real analysis.",
-    detail: "1–2 hour discovery call + operations audit",
+      "We spend time inside your operations â€” mapping workflows, identifying bottlenecks, and pinpointing the highest-leverage automation opportunities. No assumptions, just real analysis.",
+    detail: "1â€“2 hour discovery call + operations audit",
   },
   {
     number: "02",
     title: "Orchestrate",
     description:
-      "We design and deploy AI agents that work together across your entire workflow — connected to your existing tools, tailored to your exact processes, and tested rigorously before launch.",
+      "We design and deploy AI agents that work together across your entire workflow â€” connected to your existing tools, tailored to your exact processes, and tested rigorously before launch.",
     detail: "Custom build in as little as 48 hours",
   },
   {
@@ -42,7 +54,7 @@ export default function HowItWorksSection() {
           <motion.div
             initial={prefersReduced ? false : { opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
+            transition={spring}
             className="flex justify-center mb-4"
           >
             <Badge variant="blue">How It Works</Badge>
@@ -50,7 +62,7 @@ export default function HowItWorksSection() {
           <motion.h2
             initial={prefersReduced ? false : { opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ ...spring, delay: 0.08 }}
             className="text-4xl sm:text-5xl font-black leading-tight"
           >
             From discovery to{" "}
@@ -60,13 +72,17 @@ export default function HowItWorksSection() {
         </div>
 
         {/* 3-column horizontal bento */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {steps.map((step, i) => (
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          variants={prefersReduced ? undefined : containerVariants}
+          initial={prefersReduced ? false : "hidden"}
+          animate={inView ? "visible" : "hidden"}
+        >
+          {steps.map((step) => (
             <motion.div
               key={step.number}
-              initial={prefersReduced ? false : { opacity: 0, y: 28 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: prefersReduced ? 0 : 0.1 * i + 0.25 }}
+              variants={prefersReduced ? undefined : itemVariants}
+              whileHover={prefersReduced ? {} : { y: -3, transition: springFast }}
               className="bg-bg-card border border-white/8 rounded-2xl p-8 flex flex-col gap-5 hover:border-white/16 transition-[border-color] duration-300 relative overflow-hidden"
             >
               {/* Large watermark number */}
@@ -89,7 +105,7 @@ export default function HowItWorksSection() {
               </span>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </SectionWrapper>
   );

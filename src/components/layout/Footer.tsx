@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Mail, Phone } from "lucide-react";
+import { Envelope, Phone } from "@phosphor-icons/react/dist/ssr";
 
 function InstagramIcon({ size = 18 }: { size?: number }) {
   return (
@@ -54,7 +54,7 @@ export default function Footer() {
                 className="flex items-center gap-2 text-sm text-text-subtle hover:text-text-primary transition-colors"
                 aria-label="Email HNBK"
               >
-                <Mail size={14} />
+                <Envelope size={14} weight="regular" />
                 hello@hnbk.solutions
               </a>
               <a

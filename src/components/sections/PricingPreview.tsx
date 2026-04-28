@@ -5,7 +5,19 @@ import { useRef } from "react";
 import SectionWrapper from "@/components/ui/SectionWrapper";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
-import { Check, Zap } from "lucide-react";
+import { Check, Lightning } from "@phosphor-icons/react";
+
+const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
+const springFast = { type: "spring", stiffness: 380, damping: 30 } as const;
+
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.25 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: spring },
+};
 
 const tiers = [
   {
@@ -71,7 +83,7 @@ export default function PricingPreview() {
         <motion.div
           initial={prefersReduced ? false : { opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={spring}
           className="flex justify-center mb-4"
         >
           <Badge variant="purple">Simple Pricing</Badge>
@@ -79,7 +91,7 @@ export default function PricingPreview() {
         <motion.h2
           initial={prefersReduced ? false : { opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ ...spring, delay: 0.08 }}
           className="text-4xl sm:text-5xl font-black leading-tight mb-5"
         >
           Transparent pricing,{" "}
@@ -88,7 +100,7 @@ export default function PricingPreview() {
         <motion.p
           initial={prefersReduced ? false : { opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          transition={{ ...spring, delay: 0.15 }}
           className="text-lg text-text-muted max-w-lg mx-auto"
         >
           No hidden fees. No surprise invoices. Just a clear investment in your
@@ -96,13 +108,17 @@ export default function PricingPreview() {
         </motion.p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
-        {tiers.map((tier, i) => (
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto"
+        variants={prefersReduced ? undefined : containerVariants}
+        initial={prefersReduced ? false : "hidden"}
+        animate={inView ? "visible" : "hidden"}
+      >
+        {tiers.map((tier) => (
           <motion.div
             key={tier.name}
-            initial={prefersReduced ? false : { opacity: 0, y: 28 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: prefersReduced ? 0 : 0.12 * i + 0.3 }}
+            variants={prefersReduced ? undefined : itemVariants}
+            whileHover={prefersReduced ? {} : { y: -3, transition: springFast }}
             className={`relative rounded-2xl p-8 flex flex-col gap-5 border transition-[border-color] duration-300 ${
               tier.highlight
                 ? "bg-bg-elevated border-brand-purple/40 ring-1 ring-brand-purple/20 shadow-xl shadow-brand-purple/10"
@@ -111,8 +127,8 @@ export default function PricingPreview() {
           >
             {tier.highlight && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="flex items-center gap-1 text-xs font-bold bg-white text-bg-base px-4 py-1.5 rounded-full shadow-lg">
-                  <Zap size={10} /> Most Popular
+                <span className="flex items-center gap-1 text-xs font-bold bg-white text-bg-base px-4 py-1.5 rounded-full shadow-lg">
+                  <Lightning size={10} weight="fill" /> Most Popular
                 </span>
               </div>
             )}
@@ -135,7 +151,7 @@ export default function PricingPreview() {
             <ul className="flex flex-col gap-3 flex-1">
               {tier.features.map((f) => (
                 <li key={f} className="flex items-start gap-3 text-sm text-text-muted">
-                  <Check size={14} className="text-brand-purple-light mt-0.5 shrink-0" />
+                  <Check size={14} weight="bold" className="text-brand-purple-light mt-0.5 shrink-0" />
                   {f}
                 </li>
               ))}
@@ -150,7 +166,7 @@ export default function PricingPreview() {
             </Button>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
     </SectionWrapper>
   );
 }

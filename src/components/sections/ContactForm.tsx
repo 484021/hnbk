@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Send, CheckCircle, ChevronDown } from "lucide-react";
+import { PaperPlaneTilt, CheckCircle, CaretDown } from "@phosphor-icons/react";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +58,7 @@ export function ContactForm() {
   if (submitted) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center gap-5">
-        <CheckCircle size={56} className="text-brand-purple-light" />
+        <CheckCircle size={56} weight="duotone" className="text-brand-purple-light" />
         <h2 className="text-3xl font-black">Message received!</h2>
         <p className="text-text-muted max-w-sm">
           Thanks for reaching out. We&apos;ll be in touch within 24 hours to
@@ -115,7 +115,7 @@ export function ContactForm() {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-subtle pointer-events-none" />
+          <CaretDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-subtle pointer-events-none" />
         </div>
       </Field>
       <Field label="Tell us about your business & goals *" id="message" error={errors.message?.message}>
@@ -137,7 +137,7 @@ export function ContactForm() {
         {isSubmitting ? "Sending..." : (
           <>
             Send Message
-            <Send size={15} />
+            <PaperPlaneTilt size={15} weight="regular" />
           </>
         )}
       </Button>

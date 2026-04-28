@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, Send, Bookmark } from "lucide-react";
+import { Heart, ChatCircle, PaperPlaneTilt, BookmarkSimple } from "@phosphor-icons/react";
 
 interface Props {
   caption: string;
@@ -53,10 +53,10 @@ export default function InstagramMockCard({
 
       {/* Action row */}
       <div className="flex items-center gap-4 px-4 py-3">
-        <Heart size={22} className="text-text-primary" aria-label="Like" />
-        <MessageCircle size={22} className="text-text-primary" aria-label="Comment" />
-        <Send size={22} className="text-text-primary" aria-label="Share" />
-        <Bookmark size={22} className="text-text-primary ml-auto" aria-label="Save" />
+        <Heart size={22} weight="regular" className="text-text-primary" aria-label="Like" />
+        <ChatCircle size={22} weight="regular" className="text-text-primary" aria-label="Comment" />
+        <PaperPlaneTilt size={22} weight="regular" className="text-text-primary" aria-label="Share" />
+        <BookmarkSimple size={22} weight="regular" className="text-text-primary ml-auto" aria-label="Save" />
       </div>
 
       {/* Caption + hashtags */}
