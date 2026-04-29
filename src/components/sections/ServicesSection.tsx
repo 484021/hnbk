@@ -1,29 +1,19 @@
 ﻿"use client";
 
-import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import SectionWrapper from "@/components/ui/SectionWrapper";
 import Badge from "@/components/ui/Badge";
+import SectionHeader from "@/components/ui/SectionHeader";
 import { Robot, Code, PlugsConnected, Lightbulb, ArrowRight } from "@phosphor-icons/react";
-
-const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
-const springFast = { type: "spring", stiffness: 380, damping: 30 } as const;
-
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.3 } },
-};
-const itemVariants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: spring },
-};
+import { spring, springFast, containerVariants, itemVariants } from "@/lib/motion";
+import { useSectionAnimation } from "@/hooks/useSectionAnimation";
 
 const featured = {
   icon: Robot,
   title: "AI Agent Orchestration",
   description:
-    "Deploy multi-agent systems that automate complex, multi-step workflows across your entire operation â€” from lead qualification to invoice processing. Agents that work together, never sleep, and get faster over time.",
+    "Deploy multi-agent systems that automate complex, multi-step workflows across your entire operation \u2014 from lead qualification to invoice processing. Agents that work together, never sleep, and get faster over time.",
   features: ["Custom agent pipelines", "Cross-platform automation", "Real-time monitoring", "Self-improving workflows"],
   href: "/services#orchestration",
   badge: "purple" as const,
@@ -34,7 +24,7 @@ const supporting = [
   {
     icon: Code,
     title: "Custom Software",
-    description: "Purpose-built applications designed around your exact business processes â€” no off-the-shelf compromises.",
+    description: "Purpose-built applications designed around your exact business processes \u2014 no off-the-shelf compromises.",
     href: "/services#software",
     badge: "blue" as const,
   },
@@ -55,10 +45,7 @@ const supporting = [
 ];
 
 export default function ServicesSection() {
-  const prefersReduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-
+  const { prefersReduced, ref, inView } = useSectionAnimation();
   const FeaturedIcon = featured.icon;
 
   return (
@@ -66,35 +53,15 @@ export default function ServicesSection() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-linear-to-r from-transparent via-brand-purple/40 to-transparent" />
 
       <div ref={ref}>
-        {/* Header */}
-        <div className="text-center mb-14">
-          <motion.div
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={spring}
-            className="flex justify-center mb-4"
-          >
-            <Badge variant="purple">What We Build</Badge>
-          </motion.div>
-          <motion.h2
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ ...spring, delay: 0.08 }}
-            className="text-4xl sm:text-5xl font-black leading-tight mb-5"
-          >
-            Four ways we{" "}
-            <span className="gradient-text">transform</span> your operations
-          </motion.h2>
-          <motion.p
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ ...spring, delay: 0.15 }}
-            className="text-lg text-text-muted max-w-xl mx-auto"
-          >
-            Whether you need end-to-end AI automation or targeted integrations,
-            we have a solution built for your stage.
-          </motion.p>
-        </div>
+          <SectionHeader
+            badge="What We Build"
+            badgeVariant="purple"
+            heading={<>Four ways we{" "}<span className="gradient-text">transform</span> your operations</>}
+            body="Whether you need end-to-end AI automation or targeted integrations, we have a solution built for your stage."
+            inView={inView}
+            prefersReduced={prefersReduced}
+            className="text-center mb-14"
+          />
 
         {/* Bento grid */}
         <motion.div
@@ -103,7 +70,7 @@ export default function ServicesSection() {
           initial={prefersReduced ? false : "hidden"}
           animate={inView ? "visible" : "hidden"}
         >
-          {/* Featured card â€” spans 2 cols on lg */}
+          {/* Featured card "” spans 2 cols on lg */}
           <motion.div
             variants={prefersReduced ? undefined : itemVariants}
             whileHover={prefersReduced ? {} : { y: -3, transition: springFast }}
@@ -138,7 +105,7 @@ export default function ServicesSection() {
             </Link>
           </motion.div>
 
-          {/* Supporting cards â€” stack on right */}
+          {/* Supporting cards "” stack on right */}
           <div className="flex flex-col gap-4">
             {supporting.map((s) => {
               const Icon = s.icon;

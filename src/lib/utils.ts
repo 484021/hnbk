@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 
 /** Merge Tailwind class names safely. */
 export function cn(...inputs: ClassValue[]) {
-  return inputs.filter(Boolean).join(" ");
+  return clsx(inputs);
 }
 
 /** Format a date string to human-readable. */

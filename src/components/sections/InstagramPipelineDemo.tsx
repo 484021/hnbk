@@ -8,6 +8,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, CircleNotch, ArrowCounterClockwise, CheckCircle, Lightning } from "@phosphor-icons/react";
 import InstagramMockCard from "@/components/ui/InstagramMockCard";
 import Button from "@/components/ui/Button";
+import { demoInputClass } from "@/lib/styles";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -190,7 +191,7 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
                   type="text"
                   autoComplete="name"
                   placeholder="Jane Smith"
-                  className="w-full bg-bg-elevated border border-white/8 rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2 focus-visible:ring-offset-bg-card transition-[border-color] hover:border-white/16"
+                  className={demoInputClass}
                   {...gateForm.register("name")}
                 />
                 {gateForm.formState.errors.name && (
@@ -207,7 +208,7 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
                   type="email"
                   autoComplete="email"
                   placeholder="jane@yourcompany.com"
-                  className="w-full bg-bg-elevated border border-white/8 rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2 focus-visible:ring-offset-bg-card transition-[border-color] hover:border-white/16"
+                  className={demoInputClass}
                   {...gateForm.register("email")}
                 />
                 {gateForm.formState.errors.email && (
@@ -256,7 +257,7 @@ export default function InstagramPipelineDemo({ compact = false }: Props) {
                   id="demo-topic"
                   type="text"
                   placeholder="e.g. Toronto coffee shop — new autumn menu"
-                  className="w-full bg-bg-elevated border border-white/8 rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2 focus-visible:ring-offset-bg-card transition-[border-color] hover:border-white/16"
+                  className={demoInputClass}
                   {...generateForm.register("topic")}
                 />
                 {generateForm.formState.errors.topic && (

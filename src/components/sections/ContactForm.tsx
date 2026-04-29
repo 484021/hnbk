@@ -7,6 +7,7 @@ import { z } from "zod";
 import { PaperPlaneTilt, CheckCircle, CaretDown } from "@phosphor-icons/react";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+import { formInputClass } from "@/lib/styles";
 
 const schema = z.object({
   name: z.string().min(2, "Please enter your name"),
@@ -180,13 +181,6 @@ function Field({
   );
 }
 
-function inputClass(hasError: boolean) {
-  return cn(
-    "w-full bg-bg-elevated border rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-subtle focus:outline-none focus:ring-2 transition-all",
-    hasError
-      ? "border-red-500/50 focus:ring-red-500/30"
-      : "border-white/10 hover:border-white/20 focus:ring-brand-purple/30 focus:border-brand-purple/40",
-  );
-}
+const inputClass = (hasError: boolean) => formInputClass(hasError);
 
 

@@ -1,23 +1,13 @@
 "use client";
 
-import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import SectionWrapper from "@/components/ui/SectionWrapper";
 import Badge from "@/components/ui/Badge";
+import SectionHeader from "@/components/ui/SectionHeader";
 import Button from "@/components/ui/Button";
 import { Check, Lightning } from "@phosphor-icons/react";
-
-const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
-const springFast = { type: "spring", stiffness: 380, damping: 30 } as const;
-
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.25 } },
-};
-const itemVariants = {
-  hidden: { opacity: 0, y: 28 },
-  visible: { opacity: 1, y: 0, transition: spring },
-};
+import { spring, springFast, containerVariants, itemVariants, fadeUp } from "@/lib/motion";
+import { useSectionAnimation } from "@/hooks/useSectionAnimation";
 
 const tiers = [
   {
@@ -73,42 +63,22 @@ const tiers = [
 ];
 
 export default function PricingPreview() {
-  const prefersReduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const { prefersReduced, ref, inView } = useSectionAnimation();
 
   return (
     <SectionWrapper id="pricing" className="bg-bg-base" gridMesh>
-      <div ref={ref} className="text-center mb-14">
-        <motion.div
-          initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={spring}
-          className="flex justify-center mb-4"
-        >
-          <Badge variant="purple">Simple Pricing</Badge>
-        </motion.div>
-        <motion.h2
-          initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ ...spring, delay: 0.08 }}
-          className="text-4xl sm:text-5xl font-black leading-tight mb-5"
-        >
-          Transparent pricing,{" "}
-          <span className="gradient-text">predictable results</span>
-        </motion.h2>
-        <motion.p
-          initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ ...spring, delay: 0.15 }}
-          className="text-lg text-text-muted max-w-lg mx-auto"
-        >
-          No hidden fees. No surprise invoices. Just a clear investment in your
-          operations.
-        </motion.p>
-      </div>
+      <SectionHeader
+        badge="Simple Pricing"
+        badgeVariant="purple"
+        heading={<>Transparent pricing,{" "}<span className="gradient-text">predictable results</span></>}
+        body="No hidden fees. No surprise invoices. Just a clear investment in your operations."
+        inView={inView}
+        prefersReduced={prefersReduced}
+        className="text-center mb-14"
+      />
 
       <motion.div
+        ref={ref}
         className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto"
         variants={prefersReduced ? undefined : containerVariants}
         initial={prefersReduced ? false : "hidden"}

@@ -5,8 +5,7 @@ import { useRef } from "react";
 import SectionWrapper from "@/components/ui/SectionWrapper";
 import Button from "@/components/ui/Button";
 import { ArrowRight, CalendarBlank, Check } from "@phosphor-icons/react";
-
-const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
+import { spring, fadeUp } from "@/lib/motion";
 
 export default function FinalCTASection() {
   const prefersReduced = useReducedMotion();
@@ -22,18 +21,14 @@ export default function FinalCTASection() {
 
       <div ref={ref} className="relative z-10 max-w-3xl">
         <motion.p
-          initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={spring}
+          {...fadeUp(inView, prefersReduced, 0)}
           className="text-sm font-semibold text-brand-purple-light tracking-widest uppercase mb-6"
         >
           Ready to start?
         </motion.p>
 
         <motion.h2
-          initial={prefersReduced ? false : { opacity: 0, y: 28 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ ...spring, delay: 0.08 }}
+          {...fadeUp(inView, prefersReduced, 0.08)}
           className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6"
         >
           Your operations,{" "}
@@ -41,9 +36,7 @@ export default function FinalCTASection() {
         </motion.h2>
 
         <motion.p
-          initial={prefersReduced ? false : { opacity: 0, y: 24 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ ...spring, delay: 0.15 }}
+          {...fadeUp(inView, prefersReduced, 0.15)}
           className="text-lg text-text-muted mb-10 max-w-xl"
         >
           Book a free strategy call. We&apos;ll audit your operations, identify
@@ -51,9 +44,7 @@ export default function FinalCTASection() {
         </motion.p>
 
         <motion.div
-          initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ ...spring, delay: 0.22 }}
+          {...fadeUp(inView, prefersReduced, 0.22)}
           className="flex flex-col sm:flex-row items-start gap-4"
         >
           <Button href="/contact" variant="primary" size="lg">

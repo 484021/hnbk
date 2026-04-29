@@ -1,12 +1,11 @@
 ﻿"use client";
 
-import { motion, useReducedMotion, useInView } from "framer-motion";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { ArrowRight, Robot, Check, Clock, Lightning } from "@phosphor-icons/react";
-
-const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
+import { spring } from "@/lib/motion";
 
 const agentTasks: { id: number; status: "done" | "running" | "queued"; label: string; time: string }[] = [
   { id: 1, status: "done", label: "Lead qualified & added to CRM", time: "2s ago" },

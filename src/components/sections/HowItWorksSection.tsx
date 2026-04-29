@@ -1,35 +1,24 @@
 ﻿"use client";
 
-import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import SectionWrapper from "@/components/ui/SectionWrapper";
-import Badge from "@/components/ui/Badge";
-
-const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
-const springFast = { type: "spring", stiffness: 380, damping: 30 } as const;
-
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.2 } },
-};
-const itemVariants = {
-  hidden: { opacity: 0, y: 28 },
-  visible: { opacity: 1, y: 0, transition: spring },
-};
+import SectionHeader from "@/components/ui/SectionHeader";
+import { spring, springFast, containerVariants, itemVariants } from "@/lib/motion";
+import { useSectionAnimation } from "@/hooks/useSectionAnimation";
 
 const steps = [
   {
     number: "01",
     title: "Discover",
     description:
-      "We spend time inside your operations â€” mapping workflows, identifying bottlenecks, and pinpointing the highest-leverage automation opportunities. No assumptions, just real analysis.",
-    detail: "1â€“2 hour discovery call + operations audit",
+      "We spend time inside your operations — mapping workflows, identifying bottlenecks, and pinpointing the highest-leverage automation opportunities. No assumptions, just real analysis.",
+    detail: "1–2 hour discovery call + operations audit",
   },
   {
     number: "02",
     title: "Orchestrate",
     description:
-      "We design and deploy AI agents that work together across your entire workflow â€” connected to your existing tools, tailored to your exact processes, and tested rigorously before launch.",
+      "We design and deploy AI agents that work together across your entire workflow — connected to your existing tools, tailored to your exact processes, and tested rigorously before launch.",
     detail: "Custom build in as little as 48 hours",
   },
   {
@@ -42,34 +31,19 @@ const steps = [
 ];
 
 export default function HowItWorksSection() {
-  const prefersReduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const { prefersReduced, ref, inView } = useSectionAnimation();
 
   return (
     <SectionWrapper id="how-it-works" className="bg-bg-base">
       <div ref={ref}>
-        {/* Header */}
-        <div className="text-center mb-16">
-          <motion.div
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={spring}
-            className="flex justify-center mb-4"
-          >
-            <Badge variant="blue">How It Works</Badge>
-          </motion.div>
-          <motion.h2
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ ...spring, delay: 0.08 }}
-            className="text-4xl sm:text-5xl font-black leading-tight"
-          >
-            From discovery to{" "}
-            <span className="gradient-text">deployment in days,</span>
-            <br className="hidden sm:block" /> not months
-          </motion.h2>
-        </div>
+        <SectionHeader
+          badge="How It Works"
+          badgeVariant="blue"
+          heading={<>From discovery to{" "}<span className="gradient-text">deployment in days,</span><br className="hidden sm:block" /> not months</>}
+          inView={inView}
+          prefersReduced={prefersReduced}
+          className="text-center mb-16"
+        />
 
         {/* 3-column horizontal bento */}
         <motion.div

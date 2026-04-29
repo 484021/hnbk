@@ -1,10 +1,9 @@
-"use client";
+﻿"use client";
 
-import { motion, useInView, useReducedMotion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform, useReducedMotion, useInView } from "framer-motion";
 import { useRef, useEffect } from "react";
 import SectionWrapper from "@/components/ui/SectionWrapper";
-
-const springConfig = { type: "spring", stiffness: 260, damping: 28 } as const;
+import { spring as springConfig } from "@/lib/motion";
 
 const metrics = [
   { value: 10, suffix: "x", label: "Faster Operations", qualifier: "avg. across deployments" },
@@ -12,29 +11,17 @@ const metrics = [
   { value: 48, suffix: "h", label: "Average Onboarding", qualifier: "Starter deployments" },
 ];
 
-function AnimatedCounter({
-  target,
-  suffix,
-  active,
-}: {
-  target: number;
-  suffix: string;
-  active: boolean;
-}) {
+function AnimatedCounter({ target, suffix, active }: { target: number; suffix: string; active: boolean }) {
   const prefersReduced = useReducedMotion();
   const motionVal = useMotionValue(0);
   const spring = useSpring(motionVal, { stiffness: 60, damping: 18 });
   const display = useTransform(spring, (v) => Math.round(v).toString() + suffix);
 
   useEffect(() => {
-    if (active && !prefersReduced) {
-      motionVal.set(target);
-    }
+    if (active && !prefersReduced) motionVal.set(target);
   }, [active, prefersReduced, motionVal, target]);
 
-  if (prefersReduced) {
-    return <span>{target}{suffix}</span>;
-  }
+  if (prefersReduced) return <span>{target}{suffix}</span>;
   return <motion.span>{display}</motion.span>;
 }
 
@@ -45,10 +32,7 @@ export default function MetricsSection() {
 
   return (
     <SectionWrapper className="bg-bg-card py-0">
-      <div
-        ref={ref}
-        className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/8"
-      >
+      <div ref={ref} className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/8">
         {metrics.map((m, i) => (
           <motion.div
             key={m.label}
@@ -68,4 +52,3 @@ export default function MetricsSection() {
     </SectionWrapper>
   );
 }
-

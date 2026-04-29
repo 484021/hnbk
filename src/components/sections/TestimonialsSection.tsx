@@ -1,22 +1,11 @@
 ﻿"use client";
 
-import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import SectionWrapper from "@/components/ui/SectionWrapper";
-import Badge from "@/components/ui/Badge";
+import SectionHeader from "@/components/ui/SectionHeader";
 import { Star } from "@phosphor-icons/react";
-
-const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
-const springFast = { type: "spring", stiffness: 380, damping: 30 } as const;
-
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.25 } },
-};
-const itemVariants = {
-  hidden: { opacity: 0, y: 28 },
-  visible: { opacity: 1, y: 0, transition: spring },
-};
+import { spring, springFast, containerVariants, itemVariants } from "@/lib/motion";
+import { useSectionAnimation } from "@/hooks/useSectionAnimation";
 
 const testimonials = [
   {
@@ -29,7 +18,7 @@ const testimonials = [
   },
   {
     stars: 5,
-    text: "HNBK provides quality services that help improve our online presence â€” which is essential in today's market. The optimizations and efficiencies brought upon by their solutions make everything quick and seamless. Highly recommend HNBK for any website and automation needs.",
+    text: "HNBK provides quality services that help improve our online presence \u2014 which is essential in today's market. The optimizations and efficiencies brought upon by their solutions make everything quick and seamless. Highly recommend HNBK for any website and automation needs.",
     name: "Erwin Ong",
     role: "Senior Marketing Executive",
     initials: "EO",
@@ -38,33 +27,19 @@ const testimonials = [
 ];
 
 export default function TestimonialsSection() {
-  const prefersReduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const { prefersReduced, ref, inView } = useSectionAnimation();
 
   return (
     <SectionWrapper id="testimonials" className="bg-bg-card">
       <div ref={ref}>
-        {/* Header */}
-        <div className="text-center mb-14">
-          <motion.div
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={spring}
-            className="flex justify-center mb-4"
-          >
-            <Badge variant="cyan">Client Results</Badge>
-          </motion.div>
-          <motion.h2
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ ...spring, delay: 0.08 }}
-            className="text-4xl sm:text-5xl font-black leading-tight"
-          >
-            Real businesses,{" "}
-            <span className="gradient-text">real results</span>
-          </motion.h2>
-        </div>
+          <SectionHeader
+            badge="Client Results"
+            badgeVariant="cyan"
+            heading={<>Real businesses,{" "}<span className="gradient-text">real results</span></>}
+            inView={inView}
+            prefersReduced={prefersReduced}
+            className="text-center mb-14"
+          />
 
         {/* Testimonial cards */}
         <motion.div

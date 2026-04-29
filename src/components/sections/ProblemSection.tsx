@@ -1,35 +1,24 @@
 ﻿"use client";
 
-import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import SectionWrapper from "@/components/ui/SectionWrapper";
-import Badge from "@/components/ui/Badge";
+import SectionHeader from "@/components/ui/SectionHeader";
 import { Alarm, LinkBreak, TrendUp } from "@phosphor-icons/react";
-
-const spring = { type: "spring", stiffness: 260, damping: 28 } as const;
-const springFast = { type: "spring", stiffness: 380, damping: 30 } as const;
-
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.09, delayChildren: 0.25 } },
-};
-const itemVariants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: spring },
-};
+import { spring, springFast, containerVariants, itemVariants } from "@/lib/motion";
+import { useSectionAnimation } from "@/hooks/useSectionAnimation";
 
 const problems = [
   {
     icon: Alarm,
     title: "Hours lost to repetitive tasks",
-    body: "Your team spends 40â€“60% of their day on work that doesn't require human judgment â€” data entry, follow-ups, status updates, reporting.",
+    body: "Your team spends 40\u201360% of their day on work that doesn't require human judgment \u2014 data entry, follow-ups, status updates, reporting.",
     color: "text-brand-purple-light",
     bg: "bg-brand-purple/10 border-brand-purple/20",
   },
   {
     icon: LinkBreak,
     title: "Tools that don't talk to each other",
-    body: "Your CRM, your inbox, your spreadsheets, your project tools â€” all disconnected. Information gets lost. Decisions slow to a crawl.",
+    body: "Your CRM, your inbox, your spreadsheets, your project tools \u2014 all disconnected. Information gets lost. Decisions slow to a crawl.",
     color: "text-text-muted",
     bg: "bg-white/5 border-white/10",
   },
@@ -43,43 +32,21 @@ const problems = [
 ];
 
 export default function ProblemSection() {
-  const prefersReduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const { prefersReduced, ref, inView } = useSectionAnimation();
 
   return (
     <SectionWrapper id="problem" className="bg-bg-base">
       <div ref={ref}>
-        {/* Header */}
-        <div className="max-w-2xl mb-14">
-          <motion.div
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={spring}
-            className="mb-4"
-          >
-            <Badge variant="neutral">The Problem</Badge>
-          </motion.div>
-          <motion.h2
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ ...spring, delay: 0.08 }}
-            className="text-4xl sm:text-5xl font-black leading-tight mb-5"
-          >
-            Your team is drowning in{" "}
-            <span className="gradient-text">work that AI can do.</span>
-          </motion.h2>
-          <motion.p
-            initial={prefersReduced ? false : { opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ ...spring, delay: 0.15 }}
-            className="text-lg text-text-muted leading-relaxed"
-          >
-            Most businesses lose hours every day to repetitive tasks, slow
-            decisions, and tools that don&apos;t communicate. Your best people
-            spend their time on work beneath their potential.
-          </motion.p>
-        </div>
+        <SectionHeader
+          badge="The Problem"
+          badgeVariant="neutral"
+          heading={<>Your team is drowning in{" "}<span className="gradient-text">work that AI can do.</span></>}
+          body="Most businesses lose hours every day to repetitive tasks, slow decisions, and tools that don\u2019t communicate. Your best people spend their time on work beneath their potential."
+          align="left"
+          inView={inView}
+          prefersReduced={prefersReduced}
+          className="max-w-2xl mb-14"
+        />
 
         {/* Bento grid */}
         <motion.div
