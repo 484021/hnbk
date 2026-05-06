@@ -32,7 +32,7 @@ jobs:
           fi
 
           HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \
-            -X POST "https://hnbk.solutions/api/admin/blog-step" \
+            -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
             -d "$BODY" \
@@ -74,7 +74,7 @@ jobs:
             > /tmp/body.json
 
           HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \
-            -X POST "https://hnbk.solutions/api/admin/blog-step" \
+            -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
             -d @/tmp/body.json \
@@ -109,7 +109,7 @@ jobs:
             > /tmp/body.json
 
           HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \
-            -X POST "https://hnbk.solutions/api/admin/blog-step" \
+            -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
             -d @/tmp/body.json \
@@ -144,7 +144,7 @@ jobs:
             > /tmp/body.json
 
           HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \
-            -X POST "https://hnbk.solutions/api/admin/blog-step" \
+            -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
             -d @/tmp/body.json \
@@ -190,7 +190,7 @@ jobs:
           echo "Save body size: $(wc -c < /tmp/save_body.json) bytes"
 
           HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 30 \
-            -X POST "https://hnbk.solutions/api/admin/blog-step" \
+            -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
             -d @/tmp/save_body.json \
