@@ -34,7 +34,7 @@ jobs:
             BODY='{"step":"topic"}'
           fi
 
-          HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \
+          HTTP_CODE=$(curl -s --location-trusted --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
@@ -76,7 +76,7 @@ jobs:
             '{step:"research_broad", topic: $topic, generationId: (if $genId == "" then null else $genId end)}' \
             > /tmp/body.json
 
-          HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \
+          HTTP_CODE=$(curl -s --location-trusted --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
@@ -113,7 +113,7 @@ jobs:
             '{step:"research_local", topic: $topic, generationId: (if $genId == "" then null else $genId end)}' \
             > /tmp/body.json
 
-          HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \
+          HTTP_CODE=$(curl -s --location-trusted --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
@@ -152,7 +152,7 @@ jobs:
             '{step:"write", topic: $topic, generationId: (if $genId == "" then null else $genId end), researchBroadText: $broad, researchLocalText: $local}' \
             > /tmp/body.json
 
-          HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \
+          HTTP_CODE=$(curl -s --location-trusted --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
@@ -198,7 +198,7 @@ jobs:
 
           echo "Save body size: $(wc -c < /tmp/save_body.json) bytes"
 
-          HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 30 \
+          HTTP_CODE=$(curl -s --location-trusted --connect-timeout 10 --max-time 30 \
             -X POST "https://hnbk.solutions/api/admin/blog-step/" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
