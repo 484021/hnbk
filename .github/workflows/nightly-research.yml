@@ -2,7 +2,7 @@ name: Nightly Deep Research
 
 on:
   schedule:
-    # 5:00 AM UTC = midnight EDT (Apr–Nov) / 11 PM EST (Nov–Mar)
+    # 5:00 AM UTC = midnight EDT (Apr-Nov) / 11 PM EST (Nov-Mar)
     - cron: "0 5 * * *"
   workflow_dispatch:
 
