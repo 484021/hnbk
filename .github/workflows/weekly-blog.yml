@@ -114,14 +114,20 @@ jobs:
             -d "$BODY" \
             -o /tmp/response.json
 
-          RESPONSE=$(cat /tmp/response.json)
-          echo "title=$(echo "$RESPONSE" | jq -r '.postData.title')" >> "$GITHUB_OUTPUT"
-          echo "words=$(echo "$RESPONSE" | jq -r '.wordCount')" >> "$GITHUB_OUTPUT"
-          echo "Article: $(echo "$RESPONSE" | jq -r '.wordCount') words — $(echo "$RESPONSE" | jq -r '.postData.title')"
+          # Extract rawText to a file — avoids large shell variable / jq --arg size issues
+          jq -r '.rawText // ""' /tmp/response.json > /tmp/raw.txt
 
-          # Persist rawText to workspace so save step can send it directly.
-          # This makes save work even if the generationId DB chain failed.
-          echo "$RESPONSE" | jq -r '.rawText // ""' > "$GITHUB_WORKSPACE/raw.txt"
+          echo "title=$(jq -r '.postData.title' /tmp/response.json)" >> "$GITHUB_OUTPUT"
+          echo "words=$(jq -r '.wordCount' /tmp/response.json)" >> "$GITHUB_OUTPUT"
+          echo "Article: $(jq -r '.wordCount' /tmp/response.json) words — $(jq -r '.postData.title' /tmp/response.json)"
+
+          RAW_SIZE=$(wc -c < /tmp/raw.txt)
+          echo "rawText size: ${RAW_SIZE} bytes"
+          if [ "$RAW_SIZE" -lt 100 ]; then
+            echo "::error::rawText is empty or too short (${RAW_SIZE} bytes) — write step may have failed silently"
+            cat /tmp/response.json
+            exit 1
+          fi
 
       # ── Step 5: Save to database ──────────────────────────────────────────
       - name: Save post to database
@@ -129,27 +135,24 @@ jobs:
         run: |
           set -euo pipefail
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
-          RAW_TEXT=$(cat "$GITHUB_WORKSPACE/raw.txt")
 
-          if [ -z "$RAW_TEXT" ]; then
-            echo "::error::raw.txt is empty — write step did not produce rawText"
-            exit 1
-          fi
-
-          # Send rawText directly (no DB lookup needed) + generationId for tracking update
-          BODY=$(jq -n \
+          # Build body using --rawfile (reads directly from file, handles any size)
+          jq -n \
             --arg genId "$GEN_ID" \
-            --arg raw "$RAW_TEXT" \
-            '{step:"save", generationId: (if $genId == "" then null else $genId end), rawText: $raw}')
+            --rawfile raw /tmp/raw.txt \
+            '{step:"save", generationId: (if $genId == "" then null else $genId end), rawText: $raw}' \
+            > /tmp/save_body.json
+
+          echo "Save body size: $(wc -c < /tmp/save_body.json) bytes"
 
           curl -sf --connect-timeout 10 --max-time 30 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY" \
+            -d @/tmp/save_body.json \
             -o /tmp/response.json
 
           cat /tmp/response.json
-          echo "url=$(cat /tmp/response.json | jq -r '.url')" >> "$GITHUB_OUTPUT"
-          echo "Published: https://hnbk.solutions$(cat /tmp/response.json | jq -r '.url')"
+          echo "url=$(jq -r '.url' /tmp/response.json)" >> "$GITHUB_OUTPUT"
+          echo "Published: https://hnbk.solutions$(jq -r '.url' /tmp/response.json)"
 
