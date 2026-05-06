@@ -152,23 +152,44 @@ jobs:
             '{step:"write", topic: $topic, generationId: (if $genId == "" then null else $genId end), researchBroadText: $broad, researchLocalText: $local}' \
             > /tmp/body.json
 
-          HTTP_CODE=$(curl -s --location-trusted --connect-timeout 10 --max-time 55 \
-            -X POST "https://hnbk.solutions/api/admin/blog-step/" \
-            -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
-            -H "Content-Type: application/json" \
-            -d @/tmp/body.json \
-            -o /tmp/response.json \
-            -w "%{http_code}")
+          # Retry up to 3 times — write step can hit Gemini latency spikes
+          MAX_ATTEMPTS=3
+          ATTEMPT=0
+          SUCCESS=false
+          until [ $ATTEMPT -ge $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Write attempt $ATTEMPT/$MAX_ATTEMPTS..."
+            CURL_EXIT=0
+            HTTP_CODE=$(curl -s --location-trusted --connect-timeout 10 --max-time 58 \
+              -X POST "https://hnbk.solutions/api/admin/blog-step/" \
+              -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
+              -H "Content-Type: application/json" \
+              -d @/tmp/body.json \
+              -o /tmp/response.json \
+              -w "%{http_code}") || CURL_EXIT=$?
 
-          echo "HTTP status: $HTTP_CODE"
-          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            echo "--- raw response ---"; cat /tmp/response.json; echo ""
-            echo "::error::API returned HTTP $HTTP_CODE"; exit 1
-          fi
-          if ! jq empty /tmp/response.json 2>/dev/null; then
-            echo "--- raw response ---"; cat /tmp/response.json; echo ""
-            echo "::error::Response is not valid JSON"; exit 1
-          fi
+            if [ $CURL_EXIT -ne 0 ]; then
+              echo "curl exited with code $CURL_EXIT (timeout or network error)"
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then echo "Retrying in 15s..."; sleep 15; continue; fi
+              echo "::error::Write step timed out after $MAX_ATTEMPTS attempts (curl exit $CURL_EXIT)"; exit 1
+            fi
+
+            echo "HTTP status: $HTTP_CODE"
+            if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+              echo "--- raw response ---"; cat /tmp/response.json; echo ""
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then echo "HTTP $HTTP_CODE, retrying in 15s..."; sleep 15; continue; fi
+              echo "::error::API returned HTTP $HTTP_CODE after $MAX_ATTEMPTS attempts"; exit 1
+            fi
+
+            if ! jq empty /tmp/response.json 2>/dev/null; then
+              echo "--- raw response ---"; cat /tmp/response.json; echo ""
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then echo "Invalid JSON, retrying in 15s..."; sleep 15; continue; fi
+              echo "::error::Response is not valid JSON after $MAX_ATTEMPTS attempts"; exit 1
+            fi
+
+            SUCCESS=true
+            break
+          done
 
           # Extract rawText to file (avoids shell variable size limits)
           jq -r '.rawText // ""' /tmp/response.json > /tmp/raw.txt
