@@ -16,13 +16,15 @@ jobs:
   generate:
     name: Generate Blog Post
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 5 steps × 55s max each = ~275s + overhead. 10 minutes is generous headroom.
+    timeout-minutes: 10
 
     steps:
       # ── Step 1: Topic ─────────────────────────────────────────────────────
       - name: Select topic
         id: topic
         run: |
+          set -euo pipefail
           BODY="{}"
           if [ -n "${{ inputs.topic }}" ]; then
             BODY=$(printf '{"step":"topic","topic":"%s"}' "${{ inputs.topic }}")
@@ -30,12 +32,15 @@ jobs:
             BODY='{"step":"topic"}'
           fi
 
-          RESPONSE=$(curl -sf --max-time 58 \
+          # Write response to file so curl exit code is captured cleanly by set -e
+          curl -sf --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY")
+            -d "$BODY" \
+            -o /tmp/response.json
 
+          RESPONSE=$(cat /tmp/response.json)
           echo "topic=$(echo "$RESPONSE" | jq -r '.topic')" >> "$GITHUB_OUTPUT"
           echo "generation_id=$(echo "$RESPONSE" | jq -r '.generationId // empty')" >> "$GITHUB_OUTPUT"
           echo "Topic: $(echo "$RESPONSE" | jq -r '.topic')"
@@ -44,6 +49,7 @@ jobs:
       - name: Research industry trends & statistics
         id: research_broad
         run: |
+          set -euo pipefail
           TOPIC="${{ steps.topic.outputs.topic }}"
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
 
@@ -52,12 +58,14 @@ jobs:
             --arg genId "$GEN_ID" \
             '{step:"research_broad", topic: $topic, generationId: (if $genId == "" then null else $genId end)}')
 
-          RESPONSE=$(curl -sf --max-time 58 \
+          curl -sf --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY")
+            -d "$BODY" \
+            -o /tmp/response.json
 
+          RESPONSE=$(cat /tmp/response.json)
           echo "words=$(echo "$RESPONSE" | jq -r '.wordCount')" >> "$GITHUB_OUTPUT"
           echo "Broad research: $(echo "$RESPONSE" | jq -r '.wordCount') words"
 
@@ -65,6 +73,7 @@ jobs:
       - name: Research GTA & Ontario data
         id: research_local
         run: |
+          set -euo pipefail
           TOPIC="${{ steps.topic.outputs.topic }}"
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
 
@@ -73,12 +82,14 @@ jobs:
             --arg genId "$GEN_ID" \
             '{step:"research_local", topic: $topic, generationId: (if $genId == "" then null else $genId end)}')
 
-          RESPONSE=$(curl -sf --max-time 58 \
+          curl -sf --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY")
+            -d "$BODY" \
+            -o /tmp/response.json
 
+          RESPONSE=$(cat /tmp/response.json)
           echo "words=$(echo "$RESPONSE" | jq -r '.wordCount')" >> "$GITHUB_OUTPUT"
           echo "Local research: $(echo "$RESPONSE" | jq -r '.wordCount') words"
 
@@ -86,6 +97,7 @@ jobs:
       - name: Write article
         id: write
         run: |
+          set -euo pipefail
           TOPIC="${{ steps.topic.outputs.topic }}"
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
 
@@ -94,33 +106,38 @@ jobs:
             --arg genId "$GEN_ID" \
             '{step:"write", topic: $topic, generationId: (if $genId == "" then null else $genId end)}')
 
-          RESPONSE=$(curl -sf --max-time 58 \
+          curl -sf --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY")
+            -d "$BODY" \
+            -o /tmp/response.json
 
+          RESPONSE=$(cat /tmp/response.json)
           echo "title=$(echo "$RESPONSE" | jq -r '.postData.title')" >> "$GITHUB_OUTPUT"
           echo "words=$(echo "$RESPONSE" | jq -r '.wordCount')" >> "$GITHUB_OUTPUT"
-          echo "Article written: $(echo "$RESPONSE" | jq -r '.wordCount') words — $(echo "$RESPONSE" | jq -r '.postData.title')"
+          echo "Article: $(echo "$RESPONSE" | jq -r '.wordCount') words — $(echo "$RESPONSE" | jq -r '.postData.title')"
 
       # ── Step 5: Save to database ──────────────────────────────────────────
       - name: Save post to database
         id: save
         run: |
+          set -euo pipefail
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
 
-          # Save step loads rawText from DB via generationId (avoids passing large JSON through env)
+          # Save step loads rawText from DB via generationId (no large JSON in env)
           BODY=$(jq -n \
             --arg genId "$GEN_ID" \
             '{step:"save", generationId: (if $genId == "" then null else $genId end)}')
 
-          RESPONSE=$(curl -sf --max-time 58 \
+          curl -sf --connect-timeout 10 --max-time 30 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY")
+            -d "$BODY" \
+            -o /tmp/response.json
 
+          RESPONSE=$(cat /tmp/response.json)
           echo "url=$(echo "$RESPONSE" | jq -r '.url')" >> "$GITHUB_OUTPUT"
           echo "Published: https://hnbk.solutions$(echo "$RESPONSE" | jq -r '.url')"
 
