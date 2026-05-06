@@ -1,0 +1,154 @@
+name: Nightly Deep Research
+
+on:
+  schedule:
+    # 5:00 AM UTC = midnight EDT (Apr-Nov) / 11 PM EST (Nov-Mar)
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  research:
+    name: Deep Research SMB Tech
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Run Gemini 2.5 Pro deep research and store to Supabase
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 - <<'PYEOF'
+          import urllib.request
+          import json
+          import os
+          import sys
+
+          GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+          SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
+          SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+          PROMPT = """You are an expert technology researcher for small and medium-sized businesses (SMBs).
+
+          Research ONE specific, timely technology topic that would genuinely help SMB owners in 2025-2026.
+          Focus on practical AI tools, automation workflows, or software solutions that save time or money.
+
+          Your response MUST start with exactly this format on the first line:
+          TOPIC: [concise topic title under 80 characters]
+
+          Then provide 800-1200 words of detailed research including:
+          - What the technology/tool is and how it works
+          - Specific use cases for SMBs (with concrete examples)
+          - Implementation steps or getting-started guide
+          - Costs, limitations, and alternatives
+          - Why this matters RIGHT NOW in 2025-2026
+
+          Use real, current information from the web. Be specific with tool names, pricing, and features.
+          Write for a non-technical SMB owner audience."""
+
+          payload = {
+              "contents": [{"parts": [{"text": PROMPT}]}],
+              "tools": [{"google_search": {}}],
+              "generationConfig": {
+                  "temperature": 0.7,
+                  "maxOutputTokens": 2048
+              }
+          }
+
+          url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={GEMINI_API_KEY}"
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST"
+          )
+
+          print("Calling Gemini 2.5 Pro with google_search grounding...")
+          try:
+              with urllib.request.urlopen(req, timeout=300) as resp:
+                  result = json.loads(resp.read().decode("utf-8"))
+          except Exception as e:
+              print(f"Gemini API error: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          # Extract text from response
+          try:
+              candidates = result.get("candidates", [])
+              if not candidates:
+                  print("No candidates in response", file=sys.stderr)
+                  print(json.dumps(result, indent=2), file=sys.stderr)
+                  sys.exit(1)
+              parts = candidates[0].get("content", {}).get("parts", [])
+              research_text = "".join(p.get("text", "") for p in parts).strip()
+          except Exception as e:
+              print(f"Failed to parse Gemini response: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          if not research_text:
+              print("Empty response from Gemini", file=sys.stderr)
+              sys.exit(1)
+
+          word_count = len(research_text.split())
+          print(f"Response word count: {word_count}")
+
+          if word_count < 500:
+              print(f"Response too short ({word_count} words), aborting", file=sys.stderr)
+              sys.exit(1)
+
+          # Extract TOPIC line
+          lines = research_text.splitlines()
+          topic_summary = "SMB Technology Research"
+          for line in lines:
+              stripped = line.strip()
+              if stripped.startswith("TOPIC:"):
+                  topic_summary = stripped[6:].strip()
+                  break
+
+          print(f"Topic: {topic_summary}")
+
+          # Append grounding sources
+          try:
+              chunks = (
+                  result.get("candidates", [{}])[0]
+                  .get("groundingMetadata", {})
+                  .get("groundingChunks", [])
+              )
+              if chunks:
+                  sources = "\n\nSources:\n" + "\n".join(
+                      f"- {c['web']['uri']}" for c in chunks if c.get("web", {}).get("uri")
+                  )
+                  research_text += sources
+          except Exception:
+              pass
+
+          # Store in Supabase
+          row = {
+              "topic_summary": topic_summary,
+              "research_text": research_text,
+              "status": "pending"
+          }
+
+          insert_req = urllib.request.Request(
+              f"{SUPABASE_URL}/rest/v1/deep_research",
+              data=json.dumps(row).encode("utf-8"),
+              headers={
+                  "Content-Type": "application/json",
+                  "apikey": SUPABASE_KEY,
+                  "Authorization": f"Bearer {SUPABASE_KEY}",
+                  "Prefer": "return=representation"
+              },
+              method="POST"
+          )
+
+          try:
+              with urllib.request.urlopen(insert_req, timeout=30) as resp:
+                  inserted = json.loads(resp.read().decode("utf-8"))
+                  print(f"Stored research entry: {inserted[0].get('id', 'unknown')}")
+          except urllib.error.HTTPError as e:
+              body = e.read().decode("utf-8")
+              print(f"Supabase insert failed: {e.code} {body}", file=sys.stderr)
+              sys.exit(1)
+
+          print("Done.")
+          PYEOF
