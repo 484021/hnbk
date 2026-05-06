@@ -22,8 +22,11 @@ jobs:
       # ── Step 1: Topic ─────────────────────────────────────────────────────
       - name: Select topic
         id: topic
+        env:
+          BLOG_SECRET: ${{ secrets.BLOG_GENERATION_SECRET }}
         run: |
           set -euo pipefail
+          echo "GitHub secret length: ${#BLOG_SECRET} chars"
           BODY="{}"
           if [ -n "${{ inputs.topic }}" ]; then
             BODY=$(printf '{"step":"topic","topic":"%s"}' "${{ inputs.topic }}")
@@ -93,6 +96,8 @@ jobs:
 
           echo "words=$(jq -r '.wordCount' /tmp/response.json)" >> "$GITHUB_OUTPUT"
           echo "Broad research: $(jq -r '.wordCount' /tmp/response.json) words"
+          jq -r '.researchBroadText // ""' /tmp/response.json > /tmp/research_broad.txt
+          echo "research_broad.txt size: $(wc -c < /tmp/research_broad.txt) bytes"
 
       # ── Step 3: GTA / Ontario local research ─────────────────────────────
       - name: Research GTA & Ontario data
@@ -128,6 +133,8 @@ jobs:
 
           echo "words=$(jq -r '.wordCount' /tmp/response.json)" >> "$GITHUB_OUTPUT"
           echo "Local research: $(jq -r '.wordCount' /tmp/response.json) words"
+          jq -r '.researchLocalText // ""' /tmp/response.json > /tmp/research_local.txt
+          echo "research_local.txt size: $(wc -c < /tmp/research_local.txt) bytes"
 
       # ── Step 4: Write article ─────────────────────────────────────────────
       - name: Write article
@@ -140,7 +147,9 @@ jobs:
           jq -n \
             --arg topic "$TOPIC" \
             --arg genId "$GEN_ID" \
-            '{step:"write", topic: $topic, generationId: (if $genId == "" then null else $genId end)}' \
+            --rawfile broad /tmp/research_broad.txt \
+            --rawfile local /tmp/research_local.txt \
+            '{step:"write", topic: $topic, generationId: (if $genId == "" then null else $genId end), researchBroadText: $broad, researchLocalText: $local}' \
             > /tmp/body.json
 
           HTTP_CODE=$(curl -sL --connect-timeout 10 --max-time 55 \

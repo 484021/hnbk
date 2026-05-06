@@ -55,7 +55,14 @@ export async function POST(req: NextRequest) {
   const password = process.env.ADMIN_PASSWORD ?? "";
   const cookieOk = !!password && verifyAdminCookie(cookieVal, password);
   if (!cookieOk && !isBearerAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const _secret = process.env.BLOG_GENERATION_SECRET ?? "";
+    const _header = req.headers.get("authorization") ?? "";
+    const reason = !_secret
+      ? "server_secret_missing"
+      : !_header
+        ? "no_auth_header"
+        : "token_mismatch";
+    return NextResponse.json({ error: "Unauthorized", reason }, { status: 401 });
   }
 
   const apiKey = process.env.GEMINI_API_KEY ?? "";
