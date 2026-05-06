@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { createServiceClient } from "@/lib/supabase";
 import { Resend } from "resend";
 import { verifyAdminCookie, ADMIN_COOKIE } from "@/lib/adminAuth";
@@ -31,11 +32,29 @@ type StepRequest = {
 // The client calls this endpoint once per step, passing accumulated context.
 // Each call performs exactly ONE operation (one Gemini call or one DB write),
 // which keeps execution time well under the 60s Vercel Hobby limit.
+//
+// Auth: accepts EITHER an admin session cookie (browser UI) OR a Bearer token
+// matching BLOG_GENERATION_SECRET (GitHub Actions cron workflow).
+function isBearerAuthorized(req: NextRequest): boolean {
+  const secret = process.env.BLOG_GENERATION_SECRET ?? "";
+  if (!secret) return false;
+  const header = req.headers.get("authorization") ?? "";
+  try {
+    const key = Buffer.from("hnbk-blog-auth");
+    const a = crypto.createHmac("sha256", key).update(header).digest();
+    const b = crypto.createHmac("sha256", key).update(`Bearer ${secret}`).digest();
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: NextRequest) {
-  // Auth via admin session cookie
+  // Auth via admin session cookie OR Bearer token (GitHub Actions)
   const cookieVal = req.cookies.get(ADMIN_COOKIE)?.value ?? "";
   const password = process.env.ADMIN_PASSWORD ?? "";
-  if (!password || !verifyAdminCookie(cookieVal, password)) {
+  const cookieOk = !!password && verifyAdminCookie(cookieVal, password);
+  if (!cookieOk && !isBearerAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -352,13 +371,30 @@ export async function POST(req: NextRequest) {
 
   // ── Step: save ──────────────────────────────────────────────────────────────
   if (step === "save") {
-    if (!body.rawText) {
+    // rawText can be supplied directly (browser UI) or loaded from DB via generationId (cron)
+    let rawText = body.rawText ?? "";
+    if (!rawText && body.generationId) {
+      const supabaseLoad = createServiceClient();
+      const { data: gen, error: genErr } = await supabaseLoad
+        .from("blog_generations")
+        .select("raw_write_output")
+        .eq("id", body.generationId)
+        .single();
+      if (genErr || !gen?.raw_write_output) {
+        return NextResponse.json(
+          { error: "Missing rawText and no raw_write_output found in database for this generationId" },
+          { status: 400 },
+        );
+      }
+      rawText = gen.raw_write_output;
+    }
+    if (!rawText) {
       return NextResponse.json({ error: "Missing rawText" }, { status: 400 });
     }
 
     let postData;
     try {
-      postData = parsePostData(body.rawText);
+      postData = parsePostData(rawText);
     } catch {
       return NextResponse.json({ error: "Failed to parse post data" }, { status: 500 });
     }
