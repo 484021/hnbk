@@ -16,7 +16,6 @@ jobs:
   generate:
     name: Generate Blog Post
     runs-on: ubuntu-latest
-    # 5 steps × 55s max each = ~275s + overhead. 10 minutes is generous headroom.
     timeout-minutes: 10
 
     steps:
@@ -32,19 +31,33 @@ jobs:
             BODY='{"step":"topic"}'
           fi
 
-          # Write response to file so curl exit code is captured cleanly by set -e
-          curl -sf --connect-timeout 10 --max-time 55 \
+          HTTP_CODE=$(curl -s --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
             -d "$BODY" \
-            -o /tmp/response.json
+            -o /tmp/response.json \
+            -w "%{http_code}")
 
-          RESPONSE=$(cat /tmp/response.json)
-          echo "topic=$(echo "$RESPONSE" | jq -r '.topic')" >> "$GITHUB_OUTPUT"
-          echo "generation_id=$(echo "$RESPONSE" | jq -r '.generationId // empty')" >> "$GITHUB_OUTPUT"
-          echo "=== topic step response ==="
-          echo "$RESPONSE" | jq '{topic, generationId}'
+          echo "HTTP status: $HTTP_CODE"
+          echo "--- raw response ---"
+          cat /tmp/response.json
+          echo ""
+          echo "---"
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::API returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          if ! jq empty /tmp/response.json 2>/dev/null; then
+            echo "::error::Response is not valid JSON (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+          echo "topic=$(jq -r '.topic' /tmp/response.json)" >> "$GITHUB_OUTPUT"
+          echo "generation_id=$(jq -r '.generationId // empty' /tmp/response.json)" >> "$GITHUB_OUTPUT"
+          echo "Topic selected: $(jq -r '.topic' /tmp/response.json)"
 
       # ── Step 2: Broad research ────────────────────────────────────────────
       - name: Research industry trends & statistics
@@ -54,21 +67,32 @@ jobs:
           TOPIC="${{ steps.topic.outputs.topic }}"
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
 
-          BODY=$(jq -n \
+          jq -n \
             --arg topic "$TOPIC" \
             --arg genId "$GEN_ID" \
-            '{step:"research_broad", topic: $topic, generationId: (if $genId == "" then null else $genId end)}')
+            '{step:"research_broad", topic: $topic, generationId: (if $genId == "" then null else $genId end)}' \
+            > /tmp/body.json
 
-          curl -sf --connect-timeout 10 --max-time 55 \
+          HTTP_CODE=$(curl -s --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY" \
-            -o /tmp/response.json
+            -d @/tmp/body.json \
+            -o /tmp/response.json \
+            -w "%{http_code}")
 
-          RESPONSE=$(cat /tmp/response.json)
-          echo "words=$(echo "$RESPONSE" | jq -r '.wordCount')" >> "$GITHUB_OUTPUT"
-          echo "Broad research: $(echo "$RESPONSE" | jq -r '.wordCount') words"
+          echo "HTTP status: $HTTP_CODE"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "--- raw response ---"; cat /tmp/response.json; echo ""
+            echo "::error::API returned HTTP $HTTP_CODE"; exit 1
+          fi
+          if ! jq empty /tmp/response.json 2>/dev/null; then
+            echo "--- raw response ---"; cat /tmp/response.json; echo ""
+            echo "::error::Response is not valid JSON"; exit 1
+          fi
+
+          echo "words=$(jq -r '.wordCount' /tmp/response.json)" >> "$GITHUB_OUTPUT"
+          echo "Broad research: $(jq -r '.wordCount' /tmp/response.json) words"
 
       # ── Step 3: GTA / Ontario local research ─────────────────────────────
       - name: Research GTA & Ontario data
@@ -78,21 +102,32 @@ jobs:
           TOPIC="${{ steps.topic.outputs.topic }}"
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
 
-          BODY=$(jq -n \
+          jq -n \
             --arg topic "$TOPIC" \
             --arg genId "$GEN_ID" \
-            '{step:"research_local", topic: $topic, generationId: (if $genId == "" then null else $genId end)}')
+            '{step:"research_local", topic: $topic, generationId: (if $genId == "" then null else $genId end)}' \
+            > /tmp/body.json
 
-          curl -sf --connect-timeout 10 --max-time 55 \
+          HTTP_CODE=$(curl -s --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY" \
-            -o /tmp/response.json
+            -d @/tmp/body.json \
+            -o /tmp/response.json \
+            -w "%{http_code}")
 
-          RESPONSE=$(cat /tmp/response.json)
-          echo "words=$(echo "$RESPONSE" | jq -r '.wordCount')" >> "$GITHUB_OUTPUT"
-          echo "Local research: $(echo "$RESPONSE" | jq -r '.wordCount') words"
+          echo "HTTP status: $HTTP_CODE"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "--- raw response ---"; cat /tmp/response.json; echo ""
+            echo "::error::API returned HTTP $HTTP_CODE"; exit 1
+          fi
+          if ! jq empty /tmp/response.json 2>/dev/null; then
+            echo "--- raw response ---"; cat /tmp/response.json; echo ""
+            echo "::error::Response is not valid JSON"; exit 1
+          fi
+
+          echo "words=$(jq -r '.wordCount' /tmp/response.json)" >> "$GITHUB_OUTPUT"
+          echo "Local research: $(jq -r '.wordCount' /tmp/response.json) words"
 
       # ── Step 4: Write article ─────────────────────────────────────────────
       - name: Write article
@@ -102,32 +137,42 @@ jobs:
           TOPIC="${{ steps.topic.outputs.topic }}"
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
 
-          BODY=$(jq -n \
+          jq -n \
             --arg topic "$TOPIC" \
             --arg genId "$GEN_ID" \
-            '{step:"write", topic: $topic, generationId: (if $genId == "" then null else $genId end)}')
+            '{step:"write", topic: $topic, generationId: (if $genId == "" then null else $genId end)}' \
+            > /tmp/body.json
 
-          curl -sf --connect-timeout 10 --max-time 55 \
+          HTTP_CODE=$(curl -s --connect-timeout 10 --max-time 55 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY" \
-            -o /tmp/response.json
+            -d @/tmp/body.json \
+            -o /tmp/response.json \
+            -w "%{http_code}")
 
-          # Extract rawText to a file — avoids large shell variable / jq --arg size issues
+          echo "HTTP status: $HTTP_CODE"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "--- raw response ---"; cat /tmp/response.json; echo ""
+            echo "::error::API returned HTTP $HTTP_CODE"; exit 1
+          fi
+          if ! jq empty /tmp/response.json 2>/dev/null; then
+            echo "--- raw response ---"; cat /tmp/response.json; echo ""
+            echo "::error::Response is not valid JSON"; exit 1
+          fi
+
+          # Extract rawText to file (avoids shell variable size limits)
           jq -r '.rawText // ""' /tmp/response.json > /tmp/raw.txt
+          RAW_SIZE=$(wc -c < /tmp/raw.txt)
+          echo "rawText size: ${RAW_SIZE} bytes"
+          if [ "$RAW_SIZE" -lt 100 ]; then
+            echo "::error::rawText is empty (${RAW_SIZE} bytes)"
+            cat /tmp/response.json; exit 1
+          fi
 
           echo "title=$(jq -r '.postData.title' /tmp/response.json)" >> "$GITHUB_OUTPUT"
           echo "words=$(jq -r '.wordCount' /tmp/response.json)" >> "$GITHUB_OUTPUT"
           echo "Article: $(jq -r '.wordCount' /tmp/response.json) words — $(jq -r '.postData.title' /tmp/response.json)"
-
-          RAW_SIZE=$(wc -c < /tmp/raw.txt)
-          echo "rawText size: ${RAW_SIZE} bytes"
-          if [ "$RAW_SIZE" -lt 100 ]; then
-            echo "::error::rawText is empty or too short (${RAW_SIZE} bytes) — write step may have failed silently"
-            cat /tmp/response.json
-            exit 1
-          fi
 
       # ── Step 5: Save to database ──────────────────────────────────────────
       - name: Save post to database
@@ -136,7 +181,6 @@ jobs:
           set -euo pipefail
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
 
-          # Build body using --rawfile (reads directly from file, handles any size)
           jq -n \
             --arg genId "$GEN_ID" \
             --rawfile raw /tmp/raw.txt \
@@ -145,14 +189,25 @@ jobs:
 
           echo "Save body size: $(wc -c < /tmp/save_body.json) bytes"
 
-          curl -sf --connect-timeout 10 --max-time 30 \
+          HTTP_CODE=$(curl -s --connect-timeout 10 --max-time 30 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
             -H "Authorization: Bearer ${{ secrets.BLOG_GENERATION_SECRET }}" \
             -H "Content-Type: application/json" \
             -d @/tmp/save_body.json \
-            -o /tmp/response.json
+            -o /tmp/response.json \
+            -w "%{http_code}")
 
+          echo "HTTP status: $HTTP_CODE"
+          echo "--- raw response ---"
           cat /tmp/response.json
+          echo ""
+          echo "---"
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::Save returned HTTP $HTTP_CODE"; exit 1
+          fi
+
           echo "url=$(jq -r '.url' /tmp/response.json)" >> "$GITHUB_OUTPUT"
           echo "Published: https://hnbk.solutions$(jq -r '.url' /tmp/response.json)"
+
 
