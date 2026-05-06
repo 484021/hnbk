@@ -43,7 +43,8 @@ jobs:
           RESPONSE=$(cat /tmp/response.json)
           echo "topic=$(echo "$RESPONSE" | jq -r '.topic')" >> "$GITHUB_OUTPUT"
           echo "generation_id=$(echo "$RESPONSE" | jq -r '.generationId // empty')" >> "$GITHUB_OUTPUT"
-          echo "Topic: $(echo "$RESPONSE" | jq -r '.topic')"
+          echo "=== topic step response ==="
+          echo "$RESPONSE" | jq '{topic, generationId}'
 
       # ── Step 2: Broad research ────────────────────────────────────────────
       - name: Research industry trends & statistics
@@ -118,17 +119,28 @@ jobs:
           echo "words=$(echo "$RESPONSE" | jq -r '.wordCount')" >> "$GITHUB_OUTPUT"
           echo "Article: $(echo "$RESPONSE" | jq -r '.wordCount') words — $(echo "$RESPONSE" | jq -r '.postData.title')"
 
+          # Persist rawText to workspace so save step can send it directly.
+          # This makes save work even if the generationId DB chain failed.
+          echo "$RESPONSE" | jq -r '.rawText // ""' > "$GITHUB_WORKSPACE/raw.txt"
+
       # ── Step 5: Save to database ──────────────────────────────────────────
       - name: Save post to database
         id: save
         run: |
           set -euo pipefail
           GEN_ID="${{ steps.topic.outputs.generation_id }}"
+          RAW_TEXT=$(cat "$GITHUB_WORKSPACE/raw.txt")
 
-          # Save step loads rawText from DB via generationId (no large JSON in env)
+          if [ -z "$RAW_TEXT" ]; then
+            echo "::error::raw.txt is empty — write step did not produce rawText"
+            exit 1
+          fi
+
+          # Send rawText directly (no DB lookup needed) + generationId for tracking update
           BODY=$(jq -n \
             --arg genId "$GEN_ID" \
-            '{step:"save", generationId: (if $genId == "" then null else $genId end)}')
+            --arg raw "$RAW_TEXT" \
+            '{step:"save", generationId: (if $genId == "" then null else $genId end), rawText: $raw}')
 
           curl -sf --connect-timeout 10 --max-time 30 \
             -X POST "https://hnbk.solutions/api/admin/blog-step" \
@@ -137,7 +149,7 @@ jobs:
             -d "$BODY" \
             -o /tmp/response.json
 
-          RESPONSE=$(cat /tmp/response.json)
-          echo "url=$(echo "$RESPONSE" | jq -r '.url')" >> "$GITHUB_OUTPUT"
-          echo "Published: https://hnbk.solutions$(echo "$RESPONSE" | jq -r '.url')"
+          cat /tmp/response.json
+          echo "url=$(cat /tmp/response.json | jq -r '.url')" >> "$GITHUB_OUTPUT"
+          echo "Published: https://hnbk.solutions$(cat /tmp/response.json | jq -r '.url')"
 
