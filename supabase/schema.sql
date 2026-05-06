@@ -166,3 +166,28 @@ create policy "Service role full access on blog_generations"
 
 create index if not exists blog_generations_created_at_idx on public.blog_generations (created_at desc);
 create index if not exists blog_generations_status_idx     on public.blog_generations (status);
+
+-- --- Deep Research ---------------------------------------------------
+-- Nightly AI-researched SMB tech discoveries (GitHub Actions + Gemini 2.5 Pro).
+-- Admin reviews each entry and clicks "Write Post" to produce a high-quality article.
+create table if not exists public.deep_research (
+  id              uuid primary key default uuid_generate_v4(),
+  created_at      timestamptz not null default now(),
+  topic_summary   text not null,
+  research_text   text not null,
+  status          text not null default 'pending',
+  post_id         uuid references public.blog_posts(id) on delete set null
+);
+
+alter table public.deep_research enable row level security;
+
+drop policy if exists "Service role full access on deep_research" on public.deep_research;
+create policy "Service role full access on deep_research"
+  on public.deep_research
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+create index if not exists deep_research_created_at_idx on public.deep_research (created_at desc);
+create index if not exists deep_research_status_idx     on public.deep_research (status);

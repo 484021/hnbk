@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BlogGenerator from "./BlogGenerator";
+import ResearchPanel, { type ResearchEntry } from "./ResearchPanel";
 
 type Post = {
   id: string;
@@ -45,13 +46,16 @@ function genStatusBadge(status: string): { label: string; className: string } {
 export default function AdminDashboard({
   initialPosts,
   initialGenerations = [],
+  initialResearch = [],
 }: {
   initialPosts: Post[];
   initialGenerations?: Generation[];
+  initialResearch?: ResearchEntry[];
 }) {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [generations, setGenerations] = useState<Generation[]>(initialGenerations);
+  const [research] = useState<ResearchEntry[]>(initialResearch);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [retryGen, setRetryGen] = useState<{ id: string; topic: string } | null>(null);
@@ -277,6 +281,12 @@ export default function AdminDashboard({
             </div>
           </div>
         )}
+
+        {/* ── Deep Research ──────────────────────────────────────────── */}
+        <ResearchPanel
+          initialEntries={research}
+          onPostCreated={(post) => setPosts((prev) => [post, ...prev])}
+        />
       </main>
     </div>
   );

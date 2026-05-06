@@ -29,5 +29,17 @@ export default async function AdminPage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  return <AdminDashboard initialPosts={data ?? []} initialGenerations={generationsData ?? []} />;
+  let researchData = null;
+  try {
+    const { data } = await supabase
+      .from("deep_research")
+      .select("id, topic_summary, research_text, status, created_at, post_id")
+      .order("created_at", { ascending: false })
+      .limit(30);
+    researchData = data;
+  } catch {
+    // Table may not exist yet — admin panel still loads fine
+  }
+
+  return <AdminDashboard initialPosts={data ?? []} initialGenerations={generationsData ?? []} initialResearch={researchData ?? []} />;
 }

@@ -1,0 +1,171 @@
+name: Nightly Deep Research
+
+on:
+  schedule:
+    # 5:00 AM UTC = midnight EDT (Apr–Nov) / 11 PM EST (Nov–Mar)
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  research:
+    name: Deep Research SMB Tech
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Run Gemini 2.5 Pro deep research and store to Supabase
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          import os
+          import sys
+          import urllib.request
+          import urllib.error
+          from datetime import datetime
+
+          gemini_api_key = os.environ["GEMINI_API_KEY"]
+          supabase_url   = os.environ["SUPABASE_URL"].rstrip("/")
+          supabase_key   = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+          month = datetime.utcnow().strftime("%B %Y")
+
+          prompt = f"""You are a technology researcher for HNBK (hnbk.solutions), a Toronto-based AI and automation company serving GTA small and mid-sized businesses.
+
+Today is {month}. Your job is to find REAL, VERIFIED, NEWLY AVAILABLE technology tools that can help GTA SMBs save time, cut costs, or grow — specifically tools that have launched, updated significantly, or gained traction in the LAST 3 MONTHS.
+
+TARGET BUSINESSES:
+- Toronto, Mississauga, Brampton, Markham, Vaughan, Scarborough area
+- Industries: construction/trades, restaurants, professional services (accounting, law, mortgage), medical/dental, retail, trucking/logistics, property management
+- Size: 5–100 employees, owner-operated
+- Pain points: labour costs, compliance paperwork (WSIB, CRA), missed follow-ups, manual scheduling, cash flow, slow quoting
+
+RESEARCH TASK — Find 5-8 specific tools/platforms that meet ALL of these criteria:
+1. REAL product with a real website and pricing (do not invent tools)
+2. Relevant to at least one GTA SMB industry listed above
+3. Has a concrete time-saving or cost-saving use case (e.g. "cuts invoice processing from 2 hours to 10 minutes")
+4. Available in Canada (ideally Ontario-compatible — HST-aware, bilingual if applicable)
+5. Has launched, released a major update, or gained significant press coverage in the last 3 months
+
+FOR EACH TOOL, provide:
+- Tool name + website URL
+- One-sentence description (what it does)
+- Which GTA business type benefits most
+- Specific time/cost saving (use real numbers from their marketing or reviews)
+- Pricing (free tier, monthly cost, or enterprise)
+- Why it's relevant NOW (what changed in the last 3 months — new launch, new feature, new pricing, recent press)
+- Any Canadian/Ontario-specific considerations (HST compliance, WSIB integration, bilingual support, etc.)
+
+FORMAT:
+Start your response with exactly this line (fill in the blank):
+TOPIC: [a 10-15 word summary of the common theme across the tools you found]
+
+Then write the full research below, using clear section headers for each tool.
+
+Be specific. Use real product names, real URLs, real pricing. Do not fabricate tools or statistics."""
+
+          # ── Call Gemini 2.5 Pro with Google Search grounding ──────────────────
+          payload = json.dumps({
+              "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+              "tools": [{"google_search": {}}],
+          }).encode("utf-8")
+
+          req = urllib.request.Request(
+              f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={gemini_api_key}",
+              data=payload,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+
+          print("Calling Gemini 2.5 Pro with Google Search grounding...")
+          try:
+              with urllib.request.urlopen(req, timeout=300) as resp:
+                  data = json.loads(resp.read().decode("utf-8"))
+          except urllib.error.HTTPError as e:
+              body = e.read().decode("utf-8", errors="replace")[:500]
+              print(f"Gemini API error {e.code}: {body}", file=sys.stderr)
+              sys.exit(1)
+          except Exception as e:
+              print(f"Request failed: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          candidate = (data.get("candidates") or [{}])[0]
+          text = (candidate.get("content", {}).get("parts") or [{}])[0].get("text", "").strip()
+
+          if not text:
+              print("Gemini returned empty response", file=sys.stderr)
+              sys.exit(1)
+
+          # Append verified source URLs from grounding metadata
+          chunks = candidate.get("groundingMetadata", {}).get("groundingChunks") or []
+          urls = []
+          seen = set()
+          for chunk in chunks:
+              web = chunk.get("web", {})
+              uri = web.get("uri", "")
+              title = web.get("title", uri)
+              if uri and uri not in seen:
+                  seen.add(uri)
+                  urls.append(f"- [{title}]({uri})")
+          if urls:
+              text += "\n\n## Verified Sources\n" + "\n".join(urls)
+
+          word_count = len(text.split())
+          print(f"Research complete: {word_count} words")
+
+          if word_count < 500:
+              print(f"ERROR: Research too short ({word_count} words, minimum 500)", file=sys.stderr)
+              sys.exit(1)
+
+          # Extract topic_summary from first line
+          lines = text.splitlines()
+          topic_summary = None
+          for line in lines[:5]:
+              stripped = line.strip()
+              if stripped.upper().startswith("TOPIC:"):
+                  topic_summary = stripped[6:].strip()
+                  break
+          if not topic_summary:
+              # Fallback: use first non-empty line truncated to 120 chars
+              topic_summary = next((l.strip() for l in lines if l.strip()), "SMB tech research")[:120]
+
+          print(f"Topic summary: {topic_summary}")
+
+          # ── Store to Supabase ──────────────────────────────────────────────────
+          insert_payload = json.dumps({
+              "topic_summary": topic_summary,
+              "research_text": text,
+              "status": "pending",
+          }).encode("utf-8")
+
+          insert_req = urllib.request.Request(
+              f"{supabase_url}/rest/v1/deep_research",
+              data=insert_payload,
+              headers={
+                  "Content-Type": "application/json",
+                  "apikey": supabase_key,
+                  "Authorization": f"Bearer {supabase_key}",
+                  "Prefer": "return=representation",
+              },
+              method="POST",
+          )
+
+          print("Storing to Supabase...")
+          try:
+              with urllib.request.urlopen(insert_req, timeout=30) as resp:
+                  result = json.loads(resp.read().decode("utf-8"))
+                  record_id = result[0]["id"] if isinstance(result, list) and result else "unknown"
+                  print(f"Stored successfully. Record ID: {record_id}")
+          except urllib.error.HTTPError as e:
+              body = e.read().decode("utf-8", errors="replace")[:500]
+              print(f"Supabase insert error {e.code}: {body}", file=sys.stderr)
+              sys.exit(1)
+          except Exception as e:
+              print(f"Supabase insert failed: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          print("Done. Research entry is ready for review in the admin panel.")
+          PYEOF
