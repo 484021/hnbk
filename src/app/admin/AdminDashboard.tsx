@@ -67,10 +67,13 @@ export default function AdminDashboard({
   const [researchEnabled, setResearchEnabled] = useState(initialResearchEnabled);
   const [togglingBlog, setTogglingBlog] = useState(false);
   const [togglingResearch, setTogglingResearch] = useState(false);
+  const [automationError, setAutomationError] = useState("");
 
   async function toggleAutomation(key: "blog_automation_enabled" | "research_automation_enabled", newVal: boolean) {
     const setToggling = key === "blog_automation_enabled" ? setTogglingBlog : setTogglingResearch;
     const setValue = key === "blog_automation_enabled" ? setBlogEnabled : setResearchEnabled;
+    // Optimistic update — flip immediately, revert on failure
+    setValue(newVal);
     setToggling(true);
     try {
       const res = await fetch("/api/admin/settings", {
@@ -78,14 +81,16 @@ export default function AdminDashboard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [key]: newVal }),
       });
-      if (res.ok) {
-        setValue(newVal);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setValue(!newVal); // revert
+        setAutomationError(d.error ?? "Failed to save setting");
       } else {
-        const d = await res.json();
-        setMsg(`Settings error: ${d.error}`);
+        setAutomationError("");
       }
     } catch {
-      setMsg("Network error saving settings");
+      setValue(!newVal); // revert
+      setAutomationError("Network error — could not save setting");
     } finally {
       setToggling(false);
     }
@@ -199,6 +204,9 @@ export default function AdminDashboard({
             </span>
           </div>
         </div>
+        {automationError && (
+          <p className="max-w-5xl mx-auto text-xs text-red-400 pb-2 px-0">{automationError}</p>
+        )}
       </div>
 
       <main className="max-w-5xl mx-auto p-6">
