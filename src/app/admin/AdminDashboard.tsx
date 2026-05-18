@@ -47,10 +47,14 @@ export default function AdminDashboard({
   initialPosts,
   initialGenerations = [],
   initialResearch = [],
+  initialBlogEnabled = true,
+  initialResearchEnabled = true,
 }: {
   initialPosts: Post[];
   initialGenerations?: Generation[];
   initialResearch?: ResearchEntry[];
+  initialBlogEnabled?: boolean;
+  initialResearchEnabled?: boolean;
 }) {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -59,6 +63,33 @@ export default function AdminDashboard({
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [retryGen, setRetryGen] = useState<{ id: string; topic: string } | null>(null);
+  const [blogEnabled, setBlogEnabled] = useState(initialBlogEnabled);
+  const [researchEnabled, setResearchEnabled] = useState(initialResearchEnabled);
+  const [togglingBlog, setTogglingBlog] = useState(false);
+  const [togglingResearch, setTogglingResearch] = useState(false);
+
+  async function toggleAutomation(key: "blog_automation_enabled" | "research_automation_enabled", newVal: boolean) {
+    const setToggling = key === "blog_automation_enabled" ? setTogglingBlog : setTogglingResearch;
+    const setValue = key === "blog_automation_enabled" ? setBlogEnabled : setResearchEnabled;
+    setToggling(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: newVal }),
+      });
+      if (res.ok) {
+        setValue(newVal);
+      } else {
+        const d = await res.json();
+        setMsg(`Settings error: ${d.error}`);
+      }
+    } catch {
+      setMsg("Network error saving settings");
+    } finally {
+      setToggling(false);
+    }
+  }
 
   async function publishNow(slug: string) {
     setBusy(slug);
@@ -128,6 +159,47 @@ export default function AdminDashboard({
           Sign out
         </button>
       </header>
+
+      {/* Automation Toggles */}
+      <div className="border-b border-gray-800 bg-gray-900/50 px-6 py-3">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center gap-4">
+          <span className="text-gray-500 text-xs font-medium uppercase tracking-wider shrink-0">Automations</span>
+          {/* Daily Blog Post */}
+          <div className="flex items-center gap-2.5">
+            <span className="text-gray-300 text-xs">Daily Blog Post</span>
+            <button
+              onClick={() => toggleAutomation("blog_automation_enabled", !blogEnabled)}
+              disabled={togglingBlog}
+              aria-label={blogEnabled ? "Disable daily blog post automation" : "Enable daily blog post automation"}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${blogEnabled ? "bg-emerald-600" : "bg-gray-700"}`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${blogEnabled ? "translate-x-4" : "translate-x-0"}`}
+              />
+            </button>
+            <span className={`text-xs font-medium ${blogEnabled ? "text-emerald-400" : "text-gray-500"}`}>
+              {togglingBlog ? "…" : blogEnabled ? "On" : "Off"}
+            </span>
+          </div>
+          {/* Nightly Research */}
+          <div className="flex items-center gap-2.5">
+            <span className="text-gray-300 text-xs">Nightly Research</span>
+            <button
+              onClick={() => toggleAutomation("research_automation_enabled", !researchEnabled)}
+              disabled={togglingResearch}
+              aria-label={researchEnabled ? "Disable nightly research automation" : "Enable nightly research automation"}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${researchEnabled ? "bg-emerald-600" : "bg-gray-700"}`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${researchEnabled ? "translate-x-4" : "translate-x-0"}`}
+              />
+            </button>
+            <span className={`text-xs font-medium ${researchEnabled ? "text-emerald-400" : "text-gray-500"}`}>
+              {togglingResearch ? "…" : researchEnabled ? "On" : "Off"}
+            </span>
+          </div>
+        </div>
+      </div>
 
       <main className="max-w-5xl mx-auto p-6">
         {/* New generation (normal or retry mode) */}

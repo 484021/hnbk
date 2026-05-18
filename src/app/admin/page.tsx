@@ -41,5 +41,28 @@ export default async function AdminPage() {
     // Table may not exist yet — admin panel still loads fine
   }
 
-  return <AdminDashboard initialPosts={data ?? []} initialGenerations={generationsData ?? []} initialResearch={researchData ?? []} />;
+  let initialBlogEnabled = true;
+  let initialResearchEnabled = true;
+  try {
+    const { data: settingsRows } = await supabase
+      .from("settings")
+      .select("key, value")
+      .in("key", ["blog_automation_enabled", "research_automation_enabled"]);
+    for (const row of settingsRows ?? []) {
+      if (row.key === "blog_automation_enabled") initialBlogEnabled = row.value !== "false";
+      if (row.key === "research_automation_enabled") initialResearchEnabled = row.value !== "false";
+    }
+  } catch {
+    // Settings table may not exist yet — default to enabled
+  }
+
+  return (
+    <AdminDashboard
+      initialPosts={data ?? []}
+      initialGenerations={generationsData ?? []}
+      initialResearch={researchData ?? []}
+      initialBlogEnabled={initialBlogEnabled}
+      initialResearchEnabled={initialResearchEnabled}
+    />
+  );
 }

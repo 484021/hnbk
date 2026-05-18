@@ -191,3 +191,28 @@ create policy "Service role full access on deep_research"
 
 create index if not exists deep_research_created_at_idx on public.deep_research (created_at desc);
 create index if not exists deep_research_status_idx     on public.deep_research (status);
+
+-- ─── Settings ─────────────────────────────────────────────────────────────────
+-- Generic key/value store for admin-configurable flags (e.g. automation toggles).
+create table if not exists public.settings (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.settings enable row level security;
+
+drop policy if exists "Service role full access on settings" on public.settings;
+create policy "Service role full access on settings"
+  on public.settings
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+-- Default automation flags (idempotent — safe to re-run)
+insert into public.settings (key, value)
+values
+  ('blog_automation_enabled',     'true'),
+  ('research_automation_enabled', 'true')
+on conflict (key) do nothing;

@@ -54,7 +54,9 @@ export async function POST(req: NextRequest) {
   const cookieVal = req.cookies.get(ADMIN_COOKIE)?.value ?? "";
   const password = process.env.ADMIN_PASSWORD ?? "";
   const cookieOk = !!password && verifyAdminCookie(cookieVal, password);
-  if (!cookieOk && !isBearerAuthorized(req)) {
+  const bearerOk = isBearerAuthorized(req);
+
+  if (!cookieOk && !bearerOk) {
     const _secret = process.env.BLOG_GENERATION_SECRET ?? "";
     const _header = req.headers.get("authorization") ?? "";
     const reason = !_secret
@@ -71,6 +73,26 @@ export async function POST(req: NextRequest) {
       { error: "Server misconfigured: missing GEMINI_API_KEY" },
       { status: 500 },
     );
+  }
+
+  // ── Automation gate: when called from GitHub Actions, respect the admin toggle
+  if (bearerOk && !cookieOk) {
+    try {
+      const supabase = createServiceClient();
+      const { data } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "blog_automation_enabled")
+        .single();
+      if (data?.value === "false") {
+        return NextResponse.json(
+          { skipped: true, reason: "Blog automation is currently disabled by admin." },
+          { status: 200 },
+        );
+      }
+    } catch {
+      // If the settings table doesn't exist yet, allow the request through
+    }
   }
 
   let body: StepRequest;
